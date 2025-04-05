@@ -1,70 +1,79 @@
 import java.awt.BorderLayout;
+import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.io.IOException;
 import java.io.PrintStream;
-import java.util.function.Function;
 
+import javax.swing.AbstractAction;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
-import javax.swing.JTextField;
+import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 
 public class SimpleChatPanel extends JFrame implements ClientUI {
     private JTextArea chatArea;
-    private JTextField inputField;
+    private JTextArea inputField;
     private JButton sendButton;
     private PrintStream output;
+
+    private static final Font FONT = new Font("Tahoma", Font.PLAIN, 16);
 
     public SimpleChatPanel(PrintStream output) {
         this.output = output;
 
         setTitle("Simple Chat");
-        setSize(400, 300);
+        setSize(400, 900);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
+        setLocationRelativeTo(null);
 
-        // Chat area (non-editable)
         chatArea = new JTextArea();
         chatArea.setEditable(false);
+        chatArea.setFont(FONT);
+        chatArea.setLineWrap(true);
+
         add(new JScrollPane(chatArea), BorderLayout.CENTER);
 
-        // Bottom panel with input field and send button
         JPanel inputPanel = new JPanel(new BorderLayout());
-        inputField = new JTextField();
+        inputField = new JTextArea();
+        inputField.setFont(FONT);
+        inputField.setLineWrap(true);
+        inputField.setWrapStyleWord(true);
+
+
         sendButton = new JButton("Send");
 
         inputPanel.add(inputField, BorderLayout.CENTER);
         inputPanel.add(sendButton, BorderLayout.EAST);
         add(inputPanel, BorderLayout.SOUTH);
 
-        // Button action
         sendButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 sendMessage();
             }
         });
 
-        // Pressing Enter also sends the message
-        inputField.addActionListener(new ActionListener() {
+        inputField.getInputMap().put(KeyStroke.getKeyStroke("ctrl ENTER"), "enviar");
+        inputField.getActionMap().put("enviar", new AbstractAction() {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 sendMessage();
             }
         });
 
-        this.setVisible(true);
+        setVisible(true);
     }
 
     private void sendMessage() {
         String message = inputField.getText().trim();
         if (!message.isEmpty()) {
             chatArea.append("You: " + message + "\n\n");
-            this.output.println(message);
+            this.output.println(message + "\n<END>");
             inputField.setText("");
         }
     }
@@ -80,7 +89,6 @@ public class SimpleChatPanel extends JFrame implements ClientUI {
             @Override
             public void windowClosing(WindowEvent e) {
                 method.run();
-                System.out.println("FECHANDO");
             }
         });
     }

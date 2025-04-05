@@ -34,6 +34,7 @@ public class Client {
 
             clientUI.onClose(() -> {
                 try {
+                    output.println("/exit\n<END>");
                     output.close();
                     server.close();
                 } catch (IOException ex) {

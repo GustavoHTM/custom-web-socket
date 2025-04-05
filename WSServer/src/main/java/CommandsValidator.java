@@ -36,13 +36,13 @@ public class CommandsValidator {
     );
 
     static void processAndValidateCommand(Client client, String message) {
-        String[] args = message.split(" ");
+        String[] args = message.trim().split(" ");
         if (args.length < 1) {
             Server.processSendClientMessage(client, client.getIp(), buildErrorMessage(INVALID_COMMAND));
             return;
         }
 
-        String command = args[0];
+        String command = args[0].trim();
         CommandEnum commandEnum = CommandEnum.convert(command);
 
         if (commandEnum == null) {

@@ -12,7 +12,7 @@ public class Server {
     private static final int PORT_NUMBER = 4000;
 
     public static final List<Client> clientList = new ArrayList<>();
-    private static final String END_OF_MESSAGE = "\n<END>";
+    private static final String END_OF_MESSAGE = "<END>";
 
     public static void main(String[] args) {
 
@@ -39,10 +39,16 @@ public class Server {
             Scanner input = new Scanner(client.getSocket().getInputStream());
 
             while (input.hasNextLine()) {
-                String message = input.nextLine();
-                System.out.println("Messagem do cliente ip: " + client.getIp() + " recebida, lendo: " + message);
+                StringBuilder message = new StringBuilder();
 
-                CommandsValidator.processAndValidateCommand(client, message);
+                String line = input.nextLine();
+                while (!line.equals(END_OF_MESSAGE)) {
+                    message.append(line + "\n");
+                    line = input.nextLine();
+                }
+
+                System.out.println("Messagem do cliente ip: " + client.getIp() + " recebida, lendo: " + message.toString().trim());
+                CommandsValidator.processAndValidateCommand(client, message.toString());
             }
         } catch (Exception e) {
             System.out.println("Houve um problema de conexão com o cliente de ip " + client.getIp() + ", Erro: " + e.getMessage());
@@ -53,7 +59,7 @@ public class Server {
         try {
             PrintStream output = new PrintStream(client.getSocket().getOutputStream());
 
-            output.println(message + END_OF_MESSAGE);
+            output.println(message + "\n" + END_OF_MESSAGE);
         } catch (Exception e) {
             System.out.println("Houve um problema ao enviar mensagem para o cliente de ip " + ip + ", Erro: " + e.getMessage());
         }
