@@ -4,6 +4,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class CommandsValidator {
 
@@ -42,22 +43,24 @@ public class CommandsValidator {
         }
 
         String command = args[0];
+        CommandEnum commandEnum = CommandEnum.convert(command);
+
         String[] commandArgs = Arrays.copyOfRange(args, 1, args.length);
 
-        switch (command) {
-            case "/users":
+        switch (commandEnum) {
+            case USERS:
                 processShowUsersCommand(client);
                 break;
-            case "/choose-name":
+            case CHOOSE_NAME:
                 processChooseNameCommand(client, commandArgs);
                 break;
-            case "/send-message":
+            case SEND_MESSAGE:
                 processSendMessageCommand(client, commandArgs);
                 break;
-            case "/send-file":
+            case SEND_FILE:
                 processSendFileCommand(client, commandArgs);
                 break;
-            case "/sair":
+            case EXIT:
                 processExitCommand(client);
                 break;
             default:
@@ -66,16 +69,10 @@ public class CommandsValidator {
     }
 
     public static String buildAvailableCommands() {
-        StringBuilder availableCommands = new StringBuilder("Comandos disponíveis:\n");
-        for (Map.Entry<String, String> entry : availableCommandsWithExample.entrySet()) {
-            if (entry.getKey().equals("/choose-name")) {
-                continue;
-            }
-
-            availableCommands.append(entry.getValue()).append("\n");
-        }
-
-        return availableCommands.toString();
+        return "Comandos disponíveis:\n" + CommandEnum.listUserCommands()
+            .stream()
+            .map(CommandEnum::getCommandHelp)
+            .collect(Collectors.joining("\n"));
     }
 
     private static String buildErrorMessage(String errorMessage) {
