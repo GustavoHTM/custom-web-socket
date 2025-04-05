@@ -22,26 +22,22 @@ public class Client {
 
             PrintStream output = new PrintStream(server.getOutputStream());
 
-            ChatPanel chatPanel = new ChatPanel(output);
-            chatPanel.setVisible(true);
+            ClientUI clientUI = new SimpleChatPanel(output);
 
             Executors.newSingleThreadExecutor().execute(() -> {
                 try {
-                    processReceiveServerMessage(chatPanel);
+                    processReceiveServerMessage(clientUI);
                 } catch (IOException ioException) {
                     throw new RuntimeException(ioException);
                 }
             });
 
-            chatPanel.addWindowListener(new WindowAdapter() {
-                @Override
-                public void windowClosed(WindowEvent e) {
-                    try {
-                        output.close();
-                        server.close();
-                    } catch (IOException ex) {
-                        throw new RuntimeException(ex);
-                    }
+            clientUI.onClose(() -> {
+                try {
+                    output.close();
+                    server.close();
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
                 }
             });
         } catch (Exception exception) {
@@ -49,7 +45,7 @@ public class Client {
         }
     }
 
-    private static void processReceiveServerMessage(ChatPanel chatPanel) throws IOException {
+    private static void processReceiveServerMessage(ClientUI clientUI) throws IOException {
         Scanner input = new Scanner(server.getInputStream());
 
         try {
@@ -68,7 +64,7 @@ public class Client {
                     line = input.nextLine();
                 }
 
-                chatPanel.receiveMessage(from, message.toString());
+                clientUI.receiveMessage(from, message.toString());
             }
         } catch (Exception exception) {
             System.out.println("Houve um problema de conexão com o servidor, Erro: " + exception.getMessage());
