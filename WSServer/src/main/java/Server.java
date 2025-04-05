@@ -66,7 +66,6 @@ public class Server {
             PrintStream output = new PrintStream(client.getSocket().getOutputStream());
 
             output.println(message);
-            output.close();
         } catch (Exception e) {
             System.out.println("Houve um problema ao enviar mensagem para o cliente de ip " + ip + ", Erro: " + e.getMessage());
         }
