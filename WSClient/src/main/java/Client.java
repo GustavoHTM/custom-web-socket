@@ -1,3 +1,6 @@
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.net.Socket;
 import java.util.Scanner;
@@ -8,52 +11,80 @@ public class Client {
     private static final int SERVER_PORT_NUMBER = 4000;
     private static final String IP_LOCALHOST = "127.0.0.1";
 
+    private static final String END_OF_MESSAGE = "<END>";
+    private static final String ERROR_MESSAGE = "<ERROR>";
+
     private static Socket server;
 
     public static void main(String[] args) {
-
         try {
             serverConnect();
 
-            Scanner input = new Scanner(System.in);
             PrintStream output = new PrintStream(server.getOutputStream());
 
-            Executors.newSingleThreadExecutor().execute(Client::processReceiveServerMessage);
+            ChatPanel chatPanel = new ChatPanel(output);
+            chatPanel.setVisible(true);
 
-            while (input.hasNextLine()) {
-                output.println(input.nextLine());
-            }
+            Executors.newSingleThreadExecutor().execute(() -> {
+                try {
+                    processReceiveServerMessage(chatPanel);
+                } catch (IOException ioException) {
+                    throw new RuntimeException(ioException);
+                }
+            });
 
-            output.close();
-            input.close();
-            server.close();
-        } catch (Exception e) {
-            System.out.println("Erro: " + e.getMessage() + ", Abortando servidor...");
+            chatPanel.addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosed(WindowEvent e) {
+                    try {
+                        output.close();
+                        server.close();
+                    } catch (IOException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+            });
+        } catch (Exception exception) {
+            System.out.println("Erro: " + exception.getMessage() + ", Abortando servidor...");
         }
     }
 
-    private static void processReceiveServerMessage() {
+    private static void processReceiveServerMessage(ChatPanel chatPanel) throws IOException {
+        Scanner input = new Scanner(server.getInputStream());
+
         try {
-            Scanner input = new Scanner(server.getInputStream());
-
             while (input.hasNextLine()) {
-                String message = input.nextLine();
-                System.out.println("Messagem do servidor recebida, lendo: " + message);
-            }
+                StringBuilder message = new StringBuilder();
+                String from = "Server";
 
+                String firstLine = input.nextLine();
+                if (!firstLine.equals(ERROR_MESSAGE)) {
+                    from = firstLine;
+                }
+
+                String line = input.nextLine();
+                while (!line.equals(END_OF_MESSAGE)) {
+                    message.append(line + "\n");
+                    line = input.nextLine();
+                }
+
+                chatPanel.receiveMessage(from, message.toString());
+            }
+        } catch (Exception exception) {
+            System.out.println("Houve um problema de conexão com o servidor, Erro: " + exception.getMessage());
+        } finally {
             input.close();
             server.close();
-        } catch (Exception e) {
-            System.out.println("Houve um problema de conexão com o servidor, Erro: " + e.getMessage());
         }
     }
 
-    private static void serverConnect() {
+    private static void serverConnect() throws IOException {
         try {
             server = new Socket(IP_LOCALHOST, SERVER_PORT_NUMBER);
             System.out.println("Conectado com o servidor com sucesso");
-        } catch (Exception e) {
-            System.out.println("Erro ao conectar com servidor, erro: " + e.getMessage());
+        } catch (Exception exception) {
+            System.out.println("Erro ao conectar com servidor, erro: " + exception.getMessage());
+            throw exception;
         }
     }
 }
