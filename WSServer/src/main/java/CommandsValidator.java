@@ -45,6 +45,11 @@ public class CommandsValidator {
         String command = args[0];
         CommandEnum commandEnum = CommandEnum.convert(command);
 
+        if (commandEnum == null) {
+            Server.processSendClientMessage(client, client.getIp(), buildErrorMessage(INVALID_COMMAND));
+            return;
+        }
+
         String[] commandArgs = Arrays.copyOfRange(args, 1, args.length);
 
         switch (commandEnum) {
@@ -63,8 +68,6 @@ public class CommandsValidator {
             case EXIT:
                 processExitCommand(client);
                 break;
-            default:
-                Server.processSendClientMessage(client, client.getIp(), buildErrorMessage(INVALID_COMMAND));
         }
     }
 
