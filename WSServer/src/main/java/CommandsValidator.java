@@ -99,7 +99,7 @@ public class CommandsValidator {
 
         String name = Arrays.asList(args).subList(0, args.length).stream().reduce((a, b) -> a + " " + b).orElse("");
 
-        if (Server.clientList.stream().anyMatch(c -> c.getName().equals(name) && !client.getName().equals(name))) {
+        if (Server.clientList.stream().anyMatch(c -> c.getName().equalsIgnoreCase(name) && !client.getName().equalsIgnoreCase(name))) {
             Server.processSendClientMessage(client, client.getIp(), buildErrorMessage(NAME_ALREADY_IN_USE));
             return;
         }
@@ -108,20 +108,20 @@ public class CommandsValidator {
     }
 
     private static void processSendMessageCommand(Client client, String[] args) {
-        if (args.length < 2 || args[1].isEmpty()) {
+        if (args.length < 2 || args[0].isEmpty() || args[1].isEmpty()) {
             Server.processSendClientMessage(client, client.getIp(), buildErrorMessage(INVALID_MESSAGE));
             return;
         }
 
-        String userName = args[1];
-        String message = Arrays.asList(args).subList(2, args.length).stream().reduce((a, b) -> a + " " + b).orElse("");
+        String userName = args[0];
+        String message = Arrays.asList(args).subList(1, args.length).stream().reduce((a, b) -> a + " " + b).orElse("");
 
         Client recipient = Server.clientList.stream()
-                .filter(c -> c.getName().equals(userName))
+                .filter(c -> c.getName().equalsIgnoreCase(userName))
                 .findFirst()
                 .orElse(null);
 
-        if (recipient == null) {
+        if (recipient == null || client.getName().equalsIgnoreCase(userName)) {
             Server.processSendClientMessage(client, client.getIp(), buildErrorMessage(USER_NOT_FOUND));
             return;
         }
@@ -139,7 +139,7 @@ public class CommandsValidator {
         String fileName = args[2];
 
         Client destinatario = Server.clientList.stream()
-                .filter(c -> c.getName().equals(targetName))
+                .filter(c -> c.getName().equalsIgnoreCase(targetName))
                 .findFirst()
                 .orElse(null);
 
