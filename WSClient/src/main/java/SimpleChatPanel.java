@@ -1,22 +1,11 @@
-import java.awt.BorderLayout;
-import java.awt.Font;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
+import java.awt.*;
+import java.awt.event.*;
+import javax.swing.*;
+import javax.swing.border.Border;
 import java.io.PrintStream;
 
-import javax.swing.AbstractAction;
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
-import javax.swing.KeyStroke;
-import javax.swing.SwingUtilities;
-
 public class SimpleChatPanel extends JFrame implements ClientUI {
-    private JTextArea chatArea;
+    private JPanel chatPanel;
     private JTextArea inputField;
     private JButton sendButton;
     private PrintStream output;
@@ -32,19 +21,22 @@ public class SimpleChatPanel extends JFrame implements ClientUI {
         setLayout(new BorderLayout());
         setLocationRelativeTo(null);
 
-        chatArea = new JTextArea();
-        chatArea.setEditable(false);
-        chatArea.setFont(FONT);
-        chatArea.setLineWrap(true);
 
-        add(new JScrollPane(chatArea), BorderLayout.CENTER);
+        // Painel de chat que vai conter as mensagens
+        chatPanel = new JPanel();
+        chatPanel.setLayout(new BoxLayout(chatPanel, BoxLayout.Y_AXIS));
+        chatPanel.setBackground(Color.WHITE);
+
+        // JScrollPane para permitir rolagem
+        JScrollPane scrollPane = new JScrollPane(chatPanel);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+        add(scrollPane, BorderLayout.CENTER);
 
         JPanel inputPanel = new JPanel(new BorderLayout());
         inputField = new JTextArea();
         inputField.setFont(FONT);
         inputField.setLineWrap(true);
         inputField.setWrapStyleWord(true);
-
 
         sendButton = new JButton("Send");
 
@@ -72,7 +64,7 @@ public class SimpleChatPanel extends JFrame implements ClientUI {
     private void sendMessage() {
         String message = inputField.getText().trim();
         if (!message.isEmpty()) {
-            chatArea.append("You: " + message + "\n\n");
+            appendMessage("You", message, new Color(173, 255, 47), FlowLayout.RIGHT); // verde claro para mensagens enviadas
             this.output.println(message + "\n<END>");
             inputField.setText("");
         }
@@ -80,7 +72,37 @@ public class SimpleChatPanel extends JFrame implements ClientUI {
 
     @Override
     public void receiveMessage(String from, String message) {
-        chatArea.append(from + ": " + message + "\n");
+        appendMessage(from, message, new Color(105, 188, 255), FlowLayout.LEFT); // azul para mensagens recebidas
+    }
+
+    private void appendMessage(String from, String message, Color color, int orientation) {
+        // Painel para cada mensagem
+        JPanel messagePanel = new JPanel();
+        messagePanel.setLayout(new FlowLayout(orientation)); // Mensagens à esquerda ou direita
+
+        // Criar o painel de mensagem com bordas arredondadas
+        JTextArea messageArea = new JTextArea(from + ": " + message);
+        messageArea.setEditable(false);
+        messageArea.setFont(FONT);
+        messageArea.setBackground(color);
+//        messageArea.setForeground(Color.WHITE);
+        messageArea.setWrapStyleWord(true);
+        messageArea.setLineWrap(true);
+
+        // Definir borda arredondada
+        Border border = BorderFactory.createLineBorder(color.darker(), 2);
+        messageArea.setBorder(BorderFactory.createCompoundBorder(border, BorderFactory.createEmptyBorder(10, 15, 10, 15)));
+
+        messagePanel.add(messageArea);
+
+        // Adiciona a mensagem ao painel de chat
+        chatPanel.add(messagePanel);
+        chatPanel.revalidate();
+        chatPanel.repaint();
+
+        // Rola automaticamente para a última mensagem
+//        JScrollBar vertical = ((JScrollPane) chatPanel.getParent()).getVerticalScrollBar();
+//        vertical.setValue(vertical.getMaximum());
     }
 
     @Override
