@@ -1,6 +1,7 @@
 import java.io.PrintStream;
 import java.net.ServerSocket;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
@@ -10,16 +11,8 @@ public class Server {
 
     private static final int PORT_NUMBER = 4000;
 
-    private static final List<Client> clientList = new ArrayList<>();
-
-    private static final Map<String, String> availableCommandsWithExample = Map.of(
-            "/users", "/users",
-            "/choose-name", "/choose-name <your-name>",
-            "/send-message", "/send-message <user-name> <mensagem>",
-            "/send-file", "/send-file <user-name> <file-path>",
-            "/show-history", "/show-history <user-name>",
-            "/sair", "/sair"
-    );
+    public static final List<Client> clientList = new ArrayList<>();
+    private static final String END_OF_MESSAGE = "\n<END>";
 
     public static void main(String[] args) {
 
@@ -31,7 +24,8 @@ public class Server {
                 Client client = new Client(server.accept());
 
                 clientList.add(client);
-                System.out.println("Conexão estabelecida, client ip: " + client.getIp());
+                LogUtils.logNewConnection(client.getIp());
+                processSendClientMessage(client, client.getIp(), CommandsValidator.SERVER_MESSAGE_IDENTIFIER + CommandsValidator.buildAvailableCommands());
 
                 Executors.newSingleThreadExecutor().execute(() -> processReceiveClientMessage(client));
             }
@@ -47,25 +41,19 @@ public class Server {
             while (input.hasNextLine()) {
                 String message = input.nextLine();
                 System.out.println("Messagem do cliente ip: " + client.getIp() + " recebida, lendo: " + message);
-                for (Client socketClient : clientList) {
-                    if (!client.equals(socketClient)) {
-                        processSendClientMessage(socketClient, socketClient.getIp(), message);
-                    }
-                }
-            }
 
-            input.close();
-            client.getSocket().close();
+                CommandsValidator.processAndValidateCommand(client, message);
+            }
         } catch (Exception e) {
             System.out.println("Houve um problema de conexão com o cliente de ip " + client.getIp() + ", Erro: " + e.getMessage());
         }
     }
 
-    private static void processSendClientMessage(Client client, String ip, String message) {
+    public static void processSendClientMessage(Client client, String ip, String message) {
         try {
             PrintStream output = new PrintStream(client.getSocket().getOutputStream());
 
-            output.println(message);
+            output.println(message + END_OF_MESSAGE);
         } catch (Exception e) {
             System.out.println("Houve um problema ao enviar mensagem para o cliente de ip " + ip + ", Erro: " + e.getMessage());
         }

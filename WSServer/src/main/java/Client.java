@@ -7,7 +7,6 @@ public class Client {
 
     private Socket socket;
     private String ip;
-    private Client currentConnection;
     private String name;
 
     private final Map<String, ArrayList<Message>> connectionMessageHistory = new HashMap<>();
@@ -32,14 +31,6 @@ public class Client {
 
     public void setIp(String ip) {
         this.ip = ip;
-    }
-
-    public Client getCurrentConnection() {
-        return currentConnection;
-    }
-
-    public void setCurrentConnection(Client currentConnection) {
-        this.currentConnection = currentConnection;
     }
 
     public String getName() {
