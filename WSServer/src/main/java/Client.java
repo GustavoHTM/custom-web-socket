@@ -9,8 +9,6 @@ public class Client {
     private String ip;
     private String name;
 
-    private final Map<String, ArrayList<Message>> connectionMessageHistory = new HashMap<>();
-
     public Client(Socket socket) {
         this.socket = socket;
         this.ip = socket.getInetAddress().getHostAddress();

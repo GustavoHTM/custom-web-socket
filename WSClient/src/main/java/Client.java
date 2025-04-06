@@ -51,9 +51,10 @@ public class Client {
             while (input.hasNextLine()) {
                 StringBuilder message = new StringBuilder();
                 String from = "Server";
+                boolean isError;
 
                 String firstLine = input.nextLine();
-                if (!firstLine.equals(ERROR_MESSAGE)) {
+                if (!(isError = firstLine.equals(ERROR_MESSAGE))) {
                     from = firstLine;
                 }
 
@@ -63,7 +64,7 @@ public class Client {
                     line = input.nextLine();
                 }
 
-                clientUI.receiveMessage(from, message.toString());
+                clientUI.receiveMessage(from, message.toString(), isError);
             }
         } catch (Exception exception) {
             System.out.println("Houve um problema de conexão com o servidor, Erro: " + exception.getMessage());

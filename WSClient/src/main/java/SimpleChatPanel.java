@@ -73,11 +73,19 @@ public class SimpleChatPanel extends JFrame implements ClientUI {
             }
         });
 
-        inputField.getInputMap().put(KeyStroke.getKeyStroke("ctrl ENTER"), "enviar");
-        inputField.getActionMap().put("enviar", new AbstractAction() {
+        inputField.getInputMap().put(KeyStroke.getKeyStroke("ENTER"), "sendMessage");
+        inputField.getActionMap().put("sendMessage", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 sendMessage();
+            }
+        });
+
+        inputField.getInputMap().put(KeyStroke.getKeyStroke("shift ENTER"), "insert-break");
+        inputField.getActionMap().put("insert-break", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                inputField.append("\n");
             }
         });
 
@@ -94,8 +102,9 @@ public class SimpleChatPanel extends JFrame implements ClientUI {
     }
 
     @Override
-    public void receiveMessage(String from, String message) {
-        appendMessage(from, message.trim(), new Color(105, 188, 255), FlowLayout.LEFT); // azul para mensagens recebidas
+    public void receiveMessage(String from, String message, boolean isError) {
+        Color messgaeColor = isError ? new Color(236, 61, 61) : new Color(105, 188, 255); // azul para mensagens recebidas
+        appendMessage(from, message.trim(), messgaeColor, FlowLayout.LEFT);
     }
 
     private void appendMessage(String from, String message, Color color, int orientation) {

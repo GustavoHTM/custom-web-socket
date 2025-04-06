@@ -79,7 +79,7 @@ public class CommandsValidator {
     }
 
     private static String buildErrorMessage(String errorMessage) {
-        return ERROR_IDENTIFIER + "[" + mapCodeErrors.get(errorMessage) + "]" + errorMessage + "\n\n" + buildAvailableCommands();
+        return ERROR_IDENTIFIER + "[" + mapCodeErrors.get(errorMessage) + "] " + errorMessage + "\n\n" + buildAvailableCommands();
     }
 
     private static void processShowUsersCommand(Client client) {
