@@ -26,6 +26,7 @@ import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.OptionalInt;
 
 public class SimpleChatPanel extends JFrame implements ClientUI {
     private JPanel chatPanel;
@@ -100,7 +101,11 @@ public class SimpleChatPanel extends JFrame implements ClientUI {
     private void appendMessage(String from, String message, Color color, int orientation) {
         Border border = BorderFactory.createLineBorder(color.darker(), 2);
 
-        JTextArea messageArea = new JTextArea(from + ": " + message);
+        OptionalInt columns = Arrays.stream(message.split("\n"))
+            .mapToInt(linha -> linha.length())
+            .max();
+
+        JTextArea messageArea = new JTextArea(message);
         messageArea.setLineWrap(true);
         messageArea.setWrapStyleWord(true);
         messageArea.setPreferredSize(null);
@@ -110,7 +115,12 @@ public class SimpleChatPanel extends JFrame implements ClientUI {
         messageArea.setAlignmentX(orientation == FlowLayout.LEFT ? Component.LEFT_ALIGNMENT : Component.RIGHT_ALIGNMENT);
         messageArea.setBorder(BorderFactory.createCompoundBorder(border, BorderFactory.createEmptyBorder(5, 10, 5, 10)));
         messageArea.revalidate();
-        messageArea.setMaximumSize(new Dimension(340, getTotalVisibleLines(messageArea) * 20 + 15));
+        messageArea.setMaximumSize(new Dimension(
+            columns.isPresent()
+                ? Math.min(columns.getAsInt() * 30, 340)
+                : 340,
+            getTotalVisibleLines(messageArea) * 20 + 15
+        ));
 
         SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
 
