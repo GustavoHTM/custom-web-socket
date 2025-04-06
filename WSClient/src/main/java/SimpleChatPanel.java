@@ -1,8 +1,31 @@
-import java.awt.*;
-import java.awt.event.*;
-import javax.swing.*;
+import javax.swing.AbstractAction;
+import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
 import javax.swing.border.Border;
+
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.PrintStream;
+import java.text.SimpleDateFormat;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
 
 public class SimpleChatPanel extends JFrame implements ClientUI {
     private JPanel chatPanel;
@@ -10,7 +33,7 @@ public class SimpleChatPanel extends JFrame implements ClientUI {
     private JButton sendButton;
     private PrintStream output;
 
-    private static final Font FONT = new Font("Tahoma", Font.PLAIN, 16);
+    private static final Font FONT = new Font("Consolas", Font.PLAIN, 17);
 
     public SimpleChatPanel(PrintStream output) {
         this.output = output;
@@ -20,16 +43,15 @@ public class SimpleChatPanel extends JFrame implements ClientUI {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
         setLocationRelativeTo(null);
+        setResizable(false);
 
-
-        // Painel de chat que vai conter as mensagens
         chatPanel = new JPanel();
         chatPanel.setLayout(new BoxLayout(chatPanel, BoxLayout.Y_AXIS));
-        chatPanel.setBackground(Color.WHITE);
+        chatPanel.setMaximumSize(new Dimension(400, Integer.MAX_VALUE));
 
-        // JScrollPane para permitir rolagem
         JScrollPane scrollPane = new JScrollPane(chatPanel);
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+        scrollPane.setMaximumSize(new Dimension(400, Integer.MAX_VALUE));
         add(scrollPane, BorderLayout.CENTER);
 
         JPanel inputPanel = new JPanel(new BorderLayout());
@@ -72,37 +94,61 @@ public class SimpleChatPanel extends JFrame implements ClientUI {
 
     @Override
     public void receiveMessage(String from, String message) {
-        appendMessage(from, message, new Color(105, 188, 255), FlowLayout.LEFT); // azul para mensagens recebidas
+        appendMessage(from, message.trim(), new Color(105, 188, 255), FlowLayout.LEFT); // azul para mensagens recebidas
     }
 
     private void appendMessage(String from, String message, Color color, int orientation) {
-        // Painel para cada mensagem
-        JPanel messagePanel = new JPanel();
-        messagePanel.setLayout(new FlowLayout(orientation)); // Mensagens à esquerda ou direita
+        Border border = BorderFactory.createLineBorder(color.darker(), 2);
 
-        // Criar o painel de mensagem com bordas arredondadas
         JTextArea messageArea = new JTextArea(from + ": " + message);
+        messageArea.setLineWrap(true);
+        messageArea.setWrapStyleWord(true);
+        messageArea.setPreferredSize(null);
         messageArea.setEditable(false);
         messageArea.setFont(FONT);
         messageArea.setBackground(color);
-//        messageArea.setForeground(Color.WHITE);
-        messageArea.setWrapStyleWord(true);
-        messageArea.setLineWrap(true);
+        messageArea.setAlignmentX(orientation == FlowLayout.LEFT ? Component.LEFT_ALIGNMENT : Component.RIGHT_ALIGNMENT);
+        messageArea.setBorder(BorderFactory.createCompoundBorder(border, BorderFactory.createEmptyBorder(5, 10, 5, 10)));
+        messageArea.revalidate();
+        messageArea.setMaximumSize(new Dimension(340, getTotalVisibleLines(messageArea) * 20 + 15));
 
-        // Definir borda arredondada
-        Border border = BorderFactory.createLineBorder(color.darker(), 2);
-        messageArea.setBorder(BorderFactory.createCompoundBorder(border, BorderFactory.createEmptyBorder(10, 15, 10, 15)));
+        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
 
+        JLabel label = new JLabel(sdf.format(new Date()) + " - From: " + from);
+        label.setFont(new Font("Tahoma", Font.PLAIN, 10));
+        label.setAlignmentX(orientation == FlowLayout.LEFT ? Component.LEFT_ALIGNMENT : Component.RIGHT_ALIGNMENT);
+
+        JPanel messagePanel = new JPanel();
+        messagePanel.setLayout(new BoxLayout(messagePanel, BoxLayout.Y_AXIS));
+        messagePanel.setAlignmentX(Component.CENTER_ALIGNMENT);
         messagePanel.add(messageArea);
+        messagePanel.add(label);
+        messagePanel.add(label);
 
-        // Adiciona a mensagem ao painel de chat
+//        messagePanel.setBackground(Color.yellow);
+//        messagePanel.setBorder(BorderFactory.createCompoundBorder(border, BorderFactory.createEmptyBorder(5, 10, 5, 10)));
+        messagePanel.setMaximumSize(new Dimension(400, getTotalVisibleLines(messageArea) * 20 + 40));
+
         chatPanel.add(messagePanel);
         chatPanel.revalidate();
         chatPanel.repaint();
 
-        // Rola automaticamente para a última mensagem
-//        JScrollBar vertical = ((JScrollPane) chatPanel.getParent()).getVerticalScrollBar();
-//        vertical.setValue(vertical.getMaximum());
+//        System.out.println(String.format("Lines: %d | LineCount: %d | Rows: %d | Height: %d | Panel Height: %d",
+//            getTotalVisibleLines(messageArea), messageArea.getLineCount(), messageArea.getRows(), messageArea.getHeight(), messagePanel.getHeight())
+//        );
+    }
+
+    private static int getTotalVisibleLines(JTextArea textArea) {
+        try {
+            String content = textArea.getText();
+            List<String> lines = Arrays.asList(content.split("\n"));
+
+            return lines.stream()
+                .mapToInt(linha -> linha.length() / 36)
+                .sum() + lines.size();
+        } catch (Exception e) {
+            return 1;
+        }
     }
 
     @Override
