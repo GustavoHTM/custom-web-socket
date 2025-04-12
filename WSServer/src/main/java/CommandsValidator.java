@@ -1,10 +1,16 @@
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import javax.swing.filechooser.FileSystemView;
 
 public class CommandsValidator {
 
@@ -17,6 +23,8 @@ public class CommandsValidator {
 
     private static final String ERROR_IDENTIFIER = "<ERROR>\n";
     public static final String SERVER_MESSAGE_IDENTIFIER = "SERVER\n";
+
+    private static final String FILES_DIRECTORY = getDesktopPath() + File.separator + "socket_files";
 
     private static final Map<String, String> availableCommandsWithExample = Map.of(
             "/users", "/users",
@@ -135,15 +143,15 @@ public class CommandsValidator {
             return;
         }
 
-        String targetName = args[1];
-        String fileName = args[2];
+        String targetName = args[0].trim();
+        Path filepath = Paths.get(args[1].trim());
 
-        Client destinatario = Server.clientList.stream()
-                .filter(c -> c.getName().equalsIgnoreCase(targetName))
-                .findFirst()
-                .orElse(null);
+        Client targetClient = Server.clientList.stream()
+            .filter(c -> c.getName().equalsIgnoreCase(targetName))
+            .findFirst()
+            .orElse(null);
 
-        if (destinatario == null) {
+        if (targetClient == null) {
             Server.processSendClientMessage(client, client.getIp(), buildErrorMessage(USER_NOT_FOUND));
             return;
         }
@@ -166,19 +174,40 @@ public class CommandsValidator {
 
             byte[] fileData = baos.toByteArray();
 
-            DataOutputStream dataOut = new DataOutputStream(destinatario.getSocket().getOutputStream());
 
-            dataOut.writeUTF("Arquivo recebido de " + client.getName() + ": " + fileName);
-            dataOut.writeUTF(fileName);
-            dataOut.writeLong(fileSize);
-            dataOut.write(fileData);
-            dataOut.flush();
+            Path fileDirectory = Paths.get(FILES_DIRECTORY, targetName);
+            if (Files.notExists(fileDirectory)) {
+                Files.createDirectories(fileDirectory);
+            }
 
-            Server.processSendClientMessage(client, client.getIp(), "Arquivo enviado com sucesso para " + targetName);
+            Path newFilepath = Paths.get(fileDirectory.toString(), filepath.getFileName().toString());
+
+            try (FileOutputStream fileOutputStream = new FileOutputStream(newFilepath.toString())) {
+                fileOutputStream.write(fileData);
+                System.out.println("Arquivo criado com sucesso!");
+            } catch (IOException e) {
+                System.err.println("Erro ao criar arquivo: " + e.getMessage());
+            }
+
+
+//            DataOutputStream dataOut = new DataOutputStream(targetClient.getSocket().getOutputStream());
+//            dataOut.writeUTF("newFile.txt");
+//            dataOut.writeLong(fileSize);
+//            dataOut.write(fileData);
+//            dataOut.flush();
+
+            Server.processSendClientMessage(targetClient, targetClient.getIp(), client.getName() + "\nenviando arquivo: " + filepath.getFileName().toString());
+            Server.processSendClientMessage(client, client.getIp(), SERVER_MESSAGE_IDENTIFIER + "Arquivo enviado com sucesso para " + targetName);
         } catch (IOException e) {
             Server.processSendClientMessage(client, client.getIp(), buildErrorMessage(String.format(SEND_FILE_ERROR, targetName)));
             System.out.println("Erro ao enviar arquivo para " + targetName + ", Erro: " + e.getMessage());
         }
+    }
+
+    private static String getDesktopPath() {
+        FileSystemView view = FileSystemView.getFileSystemView();
+        File file = view.getHomeDirectory();
+        return file.getPath();
     }
 
     private static void processExitCommand(Client client) {

@@ -21,12 +21,17 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.OptionalInt;
+import java.util.concurrent.Executors;
 
 public class SimpleChatPanel extends JFrame implements ClientUI {
     private JPanel chatPanel;
@@ -38,7 +43,6 @@ public class SimpleChatPanel extends JFrame implements ClientUI {
 
     public SimpleChatPanel(PrintStream output) {
         this.output = output;
-
         setTitle("Simple Chat");
         setSize(400, 900);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -94,10 +98,56 @@ public class SimpleChatPanel extends JFrame implements ClientUI {
 
     private void sendMessage() {
         String message = inputField.getText().trim();
-        if (!message.isEmpty()) {
-            appendMessage("You", message, new Color(173, 255, 47), FlowLayout.RIGHT); // verde claro para mensagens enviadas
-            this.output.println(message + "\n<END>");
-            inputField.setText("");
+        if (message.isEmpty()) return;
+
+        appendMessage("You", message, new Color(173, 255, 47), FlowLayout.RIGHT); // verde claro para mensagens enviadas
+        this.output.println(message + "\n<END>");
+        inputField.setText("");
+
+        if (message.startsWith("/send-file")) {
+            sendFile(message);
+        }
+    }
+
+    private void sendFile(String message) {
+        DataOutputStream dataOutputStream = null;
+        FileInputStream fileInputStream = null;
+
+        try {
+            String[] args = message.split(" ");
+            File fileToSend = new File(args[2]);
+
+            if (!fileToSend.exists()) {
+                fileToSend.createNewFile();
+            }
+
+            dataOutputStream = new DataOutputStream(output);
+            fileInputStream = new FileInputStream(fileToSend);
+
+            dataOutputStream.writeLong(fileToSend.length());
+
+            byte[] buffer = new byte[4096];
+            int bytesRead;
+            long totalBytesSent = 0;
+
+            while ((bytesRead = fileInputStream.read(buffer)) != -1) {
+                output.write(buffer, 0, bytesRead);
+                totalBytesSent += bytesRead;
+
+                // Exibir progresso
+                double progress = (double) totalBytesSent / fileToSend.length() * 100;
+                System.out.printf("Enviando: %s - Progresso: %.2f%%\n", fileToSend.getName(), progress);
+            }
+        } catch (Exception exception) {
+            System.out.println("ERRO");
+        } finally {
+            try {
+                if (fileInputStream != null) {
+                    fileInputStream.close();
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
