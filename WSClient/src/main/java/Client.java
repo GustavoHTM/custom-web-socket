@@ -13,41 +13,34 @@ public class Client {
     private static final String END_OF_MESSAGE = "<END>";
     private static final String ERROR_MESSAGE = "<ERROR>";
 
-    private static Socket server;
+    public static Socket server;
     private static PrintStream output;
 
     public static void main(String[] args) {
         try {
             serverConnect();
+            output = new PrintStream(server.getOutputStream(), true);
 
-            ClientUI clientUI = new SimpleChatPanel(output);
+            new NameSelectorFrame(name -> {
+                ClientUI clientUI = new SimpleChatPanel(output);
 
-            Executors.newSingleThreadExecutor().execute(() -> {
-                try {
-                    processReceiveServerMessage(clientUI);
-                } catch (IOException ioException) {
-                    throw new RuntimeException(ioException);
-                }
-            });
+                Executors.newSingleThreadExecutor().execute(() -> {
+                    try {
+                        processReceiveServerMessage(clientUI);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+            }, output);
 
-            clientUI.onClose(() -> {
-                try {
-                    output.println("/exit\n<END>");
-                    output.close();
-                    server.close();
-                } catch (IOException ex) {
-                    throw new RuntimeException(ex);
-                }
-            });
         } catch (Exception exception) {
-            System.out.println("Erro: " + exception.getMessage() + ", Abortando servidor...");
+            System.out.println("Erro: " + exception.getMessage() + ", Abortando...");
         }
     }
 
     private static void processReceiveServerMessage(ClientUI clientUI) throws IOException {
-        Scanner input = new Scanner(server.getInputStream());
 
-        try {
+        try (Scanner input = new Scanner(server.getInputStream())) {
             while (input.hasNextLine()) {
                 StringBuilder message = new StringBuilder();
                 String from = "Server";
@@ -60,7 +53,7 @@ public class Client {
 
                 String line = input.nextLine();
                 while (!line.equals(END_OF_MESSAGE)) {
-                    message.append(line + "\n");
+                    message.append(line).append("\n");
                     line = input.nextLine();
                 }
 
@@ -69,7 +62,6 @@ public class Client {
         } catch (Exception exception) {
             System.out.println("Houve um problema de conexão com o servidor, Erro: " + exception.getMessage());
         } finally {
-            input.close();
             server.close();
         }
     }
@@ -83,5 +75,19 @@ public class Client {
             System.out.println("Erro ao conectar com servidor, erro: " + exception.getMessage());
             throw exception;
         }
+    }
+
+    public static void closeConnection() {
+        if (server != null && !server.isClosed()) {
+            try {
+                output.println("/exit\n<END>");
+                output.close();
+                server.close();
+            } catch (IOException exception) {
+                System.out.println("Erro ao fechar a conexão, erro: " + exception.getMessage());
+            }
+        }
+
+        System.exit(0);
     }
 }

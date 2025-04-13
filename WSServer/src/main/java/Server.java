@@ -23,7 +23,6 @@ public class Server {
 
                 clientList.add(client);
                 LogUtils.logNewConnection(client.getIp());
-                processSendClientMessage(client, client.getIp(), CommandsValidator.SERVER_MESSAGE_IDENTIFIER + CommandsValidator.buildAvailableCommands());
 
                 Executors.newSingleThreadExecutor().execute(() -> processReceiveClientMessage(client));
             }

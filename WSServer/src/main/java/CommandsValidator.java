@@ -113,6 +113,8 @@ public class CommandsValidator {
         }
 
         client.setName(name);
+
+        Server.processSendClientMessage(client, client.getIp(), SERVER_MESSAGE_IDENTIFIER + "Olá " + name + "\n" + buildAvailableCommands());
     }
 
     private static void processSendMessageCommand(Client client, String[] args) {

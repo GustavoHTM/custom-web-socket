@@ -1,24 +1,14 @@
-import javax.swing.AbstractAction;
-import javax.swing.BorderFactory;
-import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
-import javax.swing.KeyStroke;
-import javax.swing.SwingUtilities;
-import javax.swing.border.Border;
-
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.dnd.DnDConstants;
+import java.awt.dnd.DropTarget;
+import java.awt.dnd.DropTargetDropEvent;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.DataOutputStream;
@@ -31,13 +21,27 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.OptionalInt;
-import java.util.concurrent.Executors;
+
+import javax.swing.AbstractAction;
+import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
+import javax.swing.Icon;
+import javax.swing.JButton;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
+import javax.swing.border.Border;
 
 public class SimpleChatPanel extends JFrame implements ClientUI {
-    private JPanel chatPanel;
-    private JTextArea inputField;
-    private JButton sendButton;
-    private PrintStream output;
+    private final JPanel chatPanel;
+    private final JTextArea inputField;
+    private final PrintStream output;
 
     private static final Font FONT = new Font("Consolas", Font.PLAIN, 17);
 
@@ -65,17 +69,33 @@ public class SimpleChatPanel extends JFrame implements ClientUI {
         inputField.setLineWrap(true);
         inputField.setWrapStyleWord(true);
 
-        sendButton = new JButton("Send");
-
         inputPanel.add(inputField, BorderLayout.CENTER);
-        inputPanel.add(sendButton, BorderLayout.EAST);
-        add(inputPanel, BorderLayout.SOUTH);
 
-        sendButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                sendMessage();
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 4));
+
+        JButton sendButton = new JButton("Send");
+        sendButton.addActionListener(e -> sendMessage());
+
+        JButton fileButton = new JButton();
+        fileButton.setPreferredSize(new Dimension(32, 32));
+        fileButton.setToolTipText("Selecionar arquivo");
+        Icon folderIcon = UIManager.getIcon("FileView.directoryIcon");
+        fileButton.setIcon(folderIcon);
+        fileButton.addActionListener((ActionEvent e) -> {
+            JFileChooser fileChooser = new JFileChooser();
+            int result = fileChooser.showOpenDialog(SimpleChatPanel.this);
+            if (result == JFileChooser.APPROVE_OPTION) {
+                File selectedFile = fileChooser.getSelectedFile();
+                String path = selectedFile.getAbsolutePath();
+                inputField.setText("/send-file <user-name> " + path);
             }
         });
+
+        buttonPanel.add(fileButton);
+        buttonPanel.add(sendButton);
+        inputPanel.add(buttonPanel, BorderLayout.EAST);
+
+        add(inputPanel, BorderLayout.SOUTH);
 
         inputField.getInputMap().put(KeyStroke.getKeyStroke("ENTER"), "sendMessage");
         inputField.getActionMap().put("sendMessage", new AbstractAction() {
@@ -93,6 +113,29 @@ public class SimpleChatPanel extends JFrame implements ClientUI {
             }
         });
 
+        inputField.setDropTarget(new DropTarget() {
+            public synchronized void drop(DropTargetDropEvent evt) {
+                try {
+                    evt.acceptDrop(DnDConstants.ACTION_COPY);
+                    List<File> droppedFiles = (List<File>) evt.getTransferable()
+                            .getTransferData(DataFlavor.javaFileListFlavor);
+                    if (!droppedFiles.isEmpty()) {
+                        File file = droppedFiles.get(0);
+                        inputField.setText("/send-file <user-name> " + file.getAbsolutePath());
+                    }
+                } catch (Exception ex) {
+                    System.out.println("Erro ao processar arquivo: " + ex.getMessage());
+                }
+            }
+        });
+
+        this.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                Client.closeConnection();
+            }
+        });
+
         setVisible(true);
     }
 
@@ -100,7 +143,7 @@ public class SimpleChatPanel extends JFrame implements ClientUI {
         String message = inputField.getText().trim();
         if (message.isEmpty()) return;
 
-        appendMessage("You", message, new Color(173, 255, 47), FlowLayout.RIGHT); // verde claro para mensagens enviadas
+        appendMessage("You", message, new Color(173, 255, 47), FlowLayout.RIGHT);
         this.output.println(message + "\n<END>");
         inputField.setText("");
 
@@ -110,7 +153,7 @@ public class SimpleChatPanel extends JFrame implements ClientUI {
     }
 
     private void sendFile(String message) {
-        DataOutputStream dataOutputStream = null;
+        DataOutputStream dataOutputStream;
         FileInputStream fileInputStream = null;
 
         try {
@@ -123,7 +166,6 @@ public class SimpleChatPanel extends JFrame implements ClientUI {
 
             dataOutputStream = new DataOutputStream(output);
             fileInputStream = new FileInputStream(fileToSend);
-
             dataOutputStream.writeLong(fileToSend.length());
 
             byte[] buffer = new byte[4096];
@@ -134,7 +176,6 @@ public class SimpleChatPanel extends JFrame implements ClientUI {
                 output.write(buffer, 0, bytesRead);
                 totalBytesSent += bytesRead;
 
-                // Exibir progresso
                 double progress = (double) totalBytesSent / fileToSend.length() * 100;
                 System.out.printf("Enviando: %s - Progresso: %.2f%%\n", fileToSend.getName(), progress);
             }
@@ -145,15 +186,13 @@ public class SimpleChatPanel extends JFrame implements ClientUI {
                 if (fileInputStream != null) {
                     fileInputStream.close();
                 }
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            } catch (IOException ignored) { }
         }
     }
 
     @Override
     public void receiveMessage(String from, String message, boolean isError) {
-        Color messgaeColor = isError ? new Color(236, 61, 61) : new Color(105, 188, 255); // azul para mensagens recebidas
+        Color messgaeColor = isError ? new Color(236, 61, 61) : new Color(105, 188, 255);
         appendMessage(from, message.trim(), messgaeColor, FlowLayout.LEFT);
     }
 
@@ -161,8 +200,8 @@ public class SimpleChatPanel extends JFrame implements ClientUI {
         Border border = BorderFactory.createLineBorder(color.darker(), 2);
 
         OptionalInt columns = Arrays.stream(message.split("\n"))
-            .mapToInt(linha -> linha.length())
-            .max();
+                .mapToInt(String::length)
+                .max();
 
         JTextArea messageArea = new JTextArea(message);
         messageArea.setLineWrap(true);
@@ -175,10 +214,10 @@ public class SimpleChatPanel extends JFrame implements ClientUI {
         messageArea.setBorder(BorderFactory.createCompoundBorder(border, BorderFactory.createEmptyBorder(5, 10, 5, 10)));
         messageArea.revalidate();
         messageArea.setMaximumSize(new Dimension(
-            columns.isPresent()
-                ? Math.min(columns.getAsInt() * 30, 340)
-                : 340,
-            getTotalVisibleLines(messageArea) * 20 + 15
+                columns.isPresent()
+                        ? Math.min(columns.getAsInt() * 30, 340)
+                        : 340,
+                getTotalVisibleLines(messageArea) * 20 + 15
         ));
 
         SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
@@ -192,42 +231,23 @@ public class SimpleChatPanel extends JFrame implements ClientUI {
         messagePanel.setAlignmentX(Component.CENTER_ALIGNMENT);
         messagePanel.add(messageArea);
         messagePanel.add(label);
-        messagePanel.add(label);
-
-//        messagePanel.setBackground(Color.yellow);
-//        messagePanel.setBorder(BorderFactory.createCompoundBorder(border, BorderFactory.createEmptyBorder(5, 10, 5, 10)));
         messagePanel.setMaximumSize(new Dimension(400, getTotalVisibleLines(messageArea) * 20 + 40));
 
         chatPanel.add(messagePanel);
         chatPanel.revalidate();
         chatPanel.repaint();
-
-//        System.out.println(String.format("Lines: %d | LineCount: %d | Rows: %d | Height: %d | Panel Height: %d",
-//            getTotalVisibleLines(messageArea), messageArea.getLineCount(), messageArea.getRows(), messageArea.getHeight(), messagePanel.getHeight())
-//        );
     }
 
     private static int getTotalVisibleLines(JTextArea textArea) {
         try {
             String content = textArea.getText();
             List<String> lines = Arrays.asList(content.split("\n"));
-
             return lines.stream()
-                .mapToInt(linha -> linha.length() / 36)
-                .sum() + lines.size();
+                    .mapToInt(line -> line.length() / 36)
+                    .sum() + lines.size();
         } catch (Exception e) {
             return 1;
         }
-    }
-
-    @Override
-    public void onClose(Runnable method) {
-        this.addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosing(WindowEvent e) {
-                method.run();
-            }
-        });
     }
 
     public static void main(String[] args) {
