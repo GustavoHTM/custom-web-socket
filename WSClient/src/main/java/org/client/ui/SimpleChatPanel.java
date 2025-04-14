@@ -301,7 +301,9 @@ public class SimpleChatPanel extends JFrame {
         Icon folderIcon = UIManager.getIcon("FileView.directoryIcon");
 
         String[] args = message.split(" ");
-        String filename = args[args.length - 1];
+
+        String[] subArray = Arrays.copyOfRange(args, 2, args.length);
+        String filename = String.join(" ", subArray);
 
         JButton downloadFileButton = new JButton();
         downloadFileButton.setPreferredSize(new Dimension(32, 32));
