@@ -24,6 +24,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.OptionalInt;
 
+import org.communication.Message;
+
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
@@ -192,9 +194,12 @@ public class SimpleChatPanel extends JFrame {
         }
     }
 
-    public void receiveMessage(String from, String message, boolean isError) {
-        Color messgaeColor = isError ? new Color(236, 61, 61) : new Color(105, 188, 255);
-        appendMessage(from, message.trim(), messgaeColor, FlowLayout.LEFT);
+    public void receiveMessage(Message message) {
+        Color messageColor = message.getType().isError()
+            ? new Color(236, 61, 61)
+            : new Color(105, 188, 255);
+
+        appendMessage(message.getFrom(), message.getContent().trim(), messageColor, FlowLayout.LEFT);
     }
 
     private void appendMessage(String from, String message, Color color, int orientation) {

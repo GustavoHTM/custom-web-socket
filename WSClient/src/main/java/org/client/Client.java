@@ -6,6 +6,9 @@ import java.net.Socket;
 import java.util.Scanner;
 import java.util.concurrent.Executors;
 
+import org.communication.Message;
+import org.communication.MessageBuilder;
+
 // todo: Inverter dependencia, fazer chat instanciar o client ou receber uma instancia de client
 public class Client {
 
@@ -44,25 +47,10 @@ public class Client {
 
         try (Scanner input = new Scanner(server.getInputStream())) {
             while (input.hasNextLine()) {
-                StringBuilder message = new StringBuilder();
-                String from = "Server";
-                boolean isError = false;
+                Message message = MessageBuilder.buildMessage(input);
+                if (message == null) continue;
 
-                String firstLine = input.nextLine();
-                if (firstLine.equals("<FILE>")) {
-
-                    from = input.nextLine();
-                } else if (!(isError = firstLine.equals(ERROR_MESSAGE))) {
-                    from = firstLine;
-                }
-
-                String line = input.nextLine();
-                while (!line.equals(END_OF_MESSAGE)) {
-                    message.append(line).append("\n");
-                    line = input.nextLine();
-                }
-
-                simpleChatPanel.receiveMessage(from, message.toString(), isError);
+                simpleChatPanel.receiveMessage(message);
             }
         } catch (Exception exception) {
             System.out.println("Houve um problema de conexão com o servidor, Erro: " + exception.getMessage());
