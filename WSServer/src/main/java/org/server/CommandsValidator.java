@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.communication.CommandEnum;
+import org.communication.FileUtils;
 import org.communication.Message;
 import org.communication.MessageType;
 
@@ -29,7 +30,7 @@ public class CommandsValidator {
 
     private static final String SERVER_MESSAGE_IDENTIFIER = "SERVER";
 
-    private static final String FILES_DIRECTORY = getDesktopPath() + File.separator + "socket_files";
+    private static final String FILES_DIRECTORY = FileUtils.getDesktopPath() + File.separator + "socket_files";
 
     private static final Map<String, Integer> mapCodeErrors = Map.of(
             INVALID_COMMAND, 100,
@@ -157,7 +158,9 @@ public class CommandsValidator {
         }
 
         String targetName = args[0].trim();
-        Path filepath = Paths.get(args[1].trim());
+
+        String[] subArray = Arrays.copyOfRange(args, 1, args.length);
+        Path filepath = Paths.get(String.join(" ", subArray));
 
         Client targetClient = Server.clientList.stream()
             .filter(c -> c.getName().equalsIgnoreCase(targetName))
@@ -187,7 +190,6 @@ public class CommandsValidator {
 
             byte[] fileData = baos.toByteArray();
 
-
             Path fileDirectory = Paths.get(FILES_DIRECTORY, targetName);
             if (Files.notExists(fileDirectory)) {
                 Files.createDirectories(fileDirectory);
@@ -205,18 +207,12 @@ public class CommandsValidator {
             Message successfulFileSentMessage = new Message(MessageType.MESSAGE, SERVER_MESSAGE_IDENTIFIER, "Arquivo enviado com sucesso para " + targetName);
             Server.processSendClientMessage(client, successfulFileSentMessage);
 
-            Message fileReceivedMessage = new Message(MessageType.MESSAGE, client.getName(), "enviando arquivo: " + filepath.getFileName().toString());
+            Message fileReceivedMessage = new Message(MessageType.FILE, client.getName(), "Arquivo recebido: " + filepath.getFileName().toString());
             Server.processSendClientMessage(targetClient, fileReceivedMessage);
         } catch (IOException e) {
             Server.processSendClientMessage(client, buildErrorMessage(String.format(SEND_FILE_ERROR, targetName)));
             System.out.println("Erro ao enviar arquivo para " + targetName + ", Erro: " + e.getMessage());
         }
-    }
-
-    private static String getDesktopPath() {
-        FileSystemView view = FileSystemView.getFileSystemView();
-        File file = view.getHomeDirectory();
-        return file.getPath();
     }
 
     private static void processExitCommand(Client client) {

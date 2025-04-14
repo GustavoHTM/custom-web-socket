@@ -25,6 +25,12 @@ import java.util.List;
 import java.util.OptionalInt;
 import java.util.concurrent.Executors;
 
+import org.client.Client;
+import org.communication.FileUtils;
+import org.communication.IOCommunication;
+import org.communication.Message;
+import org.communication.MessageType;
+
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
@@ -39,11 +45,6 @@ import javax.swing.JTextArea;
 import javax.swing.KeyStroke;
 import javax.swing.UIManager;
 import javax.swing.border.Border;
-
-import org.client.Client;
-import org.communication.IOCommunication;
-import org.communication.Message;
-import org.communication.MessageType;
 
 public class SimpleChatPanel extends JFrame {
     private final JPanel chatPanel;
@@ -182,7 +183,10 @@ public class SimpleChatPanel extends JFrame {
 
         try {
             String[] args = message.split(" ");
-            File fileToSend = new File(args[2]);
+
+            String[] subArray = Arrays.copyOfRange(args, 2, args.length);
+            String filename = String.join(" ", subArray);
+            File fileToSend = new File(filename);
 
             if (!fileToSend.exists()) {
                 fileToSend.createNewFile();
@@ -210,7 +214,8 @@ public class SimpleChatPanel extends JFrame {
                 if (fileInputStream != null) {
                     fileInputStream.close();
                 }
-            } catch (IOException ignored) { }
+            } catch (IOException ignored) {
+            }
         }
     }
 
@@ -218,6 +223,11 @@ public class SimpleChatPanel extends JFrame {
         Color messageColor = message.getType().isError()
             ? new Color(236, 61, 61)
             : new Color(105, 188, 255);
+
+        if (message.getType().isFile()) {
+            appendFileMessage(message.getFrom(), message.getContent().trim(), messageColor, FlowLayout.LEFT);
+            return;
+        }
 
         appendMessage(message.getFrom(), message.getContent().trim(), messageColor, FlowLayout.LEFT);
     }
@@ -258,6 +268,77 @@ public class SimpleChatPanel extends JFrame {
         messagePanel.add(messageArea);
         messagePanel.add(label);
         messagePanel.setMaximumSize(new Dimension(400, getTotalVisibleLines(messageArea) * 20 + 40));
+
+        chatPanel.add(messagePanel);
+        chatPanel.revalidate();
+        chatPanel.repaint();
+    }
+
+    private void appendFileMessage(String from, String message, Color color, int orientation) {
+        Border border = BorderFactory.createLineBorder(color.darker(), 2);
+
+        OptionalInt columns = Arrays.stream(message.split("\n"))
+            .mapToInt(String::length)
+            .max();
+
+        JTextArea messageArea = new JTextArea(message);
+        messageArea.setLineWrap(true);
+        messageArea.setWrapStyleWord(true);
+        messageArea.setPreferredSize(null);
+        messageArea.setEditable(false);
+        messageArea.setFont(FONT);
+        messageArea.setBackground(color);
+        messageArea.setAlignmentX(orientation == FlowLayout.LEFT ? Component.LEFT_ALIGNMENT : Component.RIGHT_ALIGNMENT);
+        messageArea.setBorder(BorderFactory.createCompoundBorder(border, BorderFactory.createEmptyBorder(5, 10, 5, 10)));
+        messageArea.revalidate();
+        messageArea.setMaximumSize(new Dimension(
+            columns.isPresent()
+                ? Math.min(columns.getAsInt() * 30, 340)
+                : 340,
+            getTotalVisibleLines(messageArea) * 20 + 15
+        ));
+
+        Icon folderIcon = UIManager.getIcon("FileView.directoryIcon");
+
+        String[] args = message.split(" ");
+        String filename = args[args.length - 1];
+
+        JButton downloadFileButton = new JButton();
+        downloadFileButton.setPreferredSize(new Dimension(32, 32));
+        downloadFileButton.setToolTipText("Baixar arquivo");
+        downloadFileButton.setIcon(folderIcon);
+        downloadFileButton.setText("Baixar arquivo");
+
+        downloadFileButton.addActionListener((ActionEvent e) -> {
+            String downloadDirectoryPath = FileUtils.getDownloadsPath();
+
+            JFileChooser folderChooser = new JFileChooser();
+            folderChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+            folderChooser.setDialogTitle("Selecione a pasta de destino");
+            folderChooser.setAcceptAllFileFilterUsed(false);
+            folderChooser.setCurrentDirectory(new File(downloadDirectoryPath));
+
+            int result = folderChooser.showOpenDialog(SimpleChatPanel.this);
+            if (result == JFileChooser.APPROVE_OPTION) {
+                File selectedFile = folderChooser.getSelectedFile();
+                String path = selectedFile.getAbsolutePath();
+                inputField.setText("/download-file " + from + " " + filename + " " + path);
+            }
+        });
+
+        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+
+        JLabel label = new JLabel(sdf.format(new Date()) + " - From: " + from);
+        label.setFont(new Font("Tahoma", Font.PLAIN, 10));
+        label.setAlignmentX(orientation == FlowLayout.LEFT ? Component.LEFT_ALIGNMENT : Component.RIGHT_ALIGNMENT);
+
+        JPanel messagePanel = new JPanel();
+        messagePanel.setLayout(new BoxLayout(messagePanel, BoxLayout.Y_AXIS));
+        messagePanel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        messagePanel.add(messageArea);
+        messagePanel.add(downloadFileButton);
+        messagePanel.add(label);
+        messagePanel.setMaximumSize(new Dimension(400, getTotalVisibleLines(messageArea) * 20 + 60));
 
         chatPanel.add(messagePanel);
         chatPanel.revalidate();

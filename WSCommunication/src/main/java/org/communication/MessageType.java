@@ -22,6 +22,10 @@ public enum MessageType {
         return this == ERROR;
     }
 
+    public boolean isFile() {
+        return this == FILE;
+    }
+
     public static MessageType convert(String code) {
         return Arrays.stream(MessageType.values())
             .filter(messageType -> messageType.code.equals(code) )
