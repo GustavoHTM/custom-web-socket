@@ -206,13 +206,6 @@ public class CommandsValidator {
                 System.err.println("Erro ao criar arquivo: " + e.getMessage());
             }
 
-
-//            DataOutputStream dataOut = new DataOutputStream(targetClient.getSocket().getOutputStream());
-//            dataOut.writeUTF("newFile.txt");
-//            dataOut.writeLong(fileSize);
-//            dataOut.write(fileData);
-//            dataOut.flush();
-
             Message successfulFileSentMessage = new Message(MessageType.MESSAGE, SERVER_MESSAGE_IDENTIFIER, "Arquivo enviado com sucesso para " + targetName);
             Server.processSendClientMessage(client, successfulFileSentMessage);
 

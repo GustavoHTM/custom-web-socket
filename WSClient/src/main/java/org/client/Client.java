@@ -11,6 +11,7 @@ import org.communication.MessageBuilder;
 
 import org.client.ui.NameSelectorFrame;
 import org.client.ui.SimpleChatPanel;
+import org.communication.MessageType;
 
 // todo: Inverter dependencia, fazer chat instanciar o client ou receber uma instancia de client
 public class Client {
@@ -73,14 +74,14 @@ public class Client {
         }
     }
 
-    public static void closeConnection() {
+    public static void closeConnection() throws IOException {
         if (server != null && !server.isClosed()) {
             try {
-                output.println("/exit\n<END>");
+                Message message = new Message(MessageType.MESSAGE, "Client", "/exit");
+                output.println(message);
+            } finally {
                 output.close();
                 server.close();
-            } catch (IOException exception) {
-                System.out.println("Erro ao fechar a conexão, erro: " + exception.getMessage());
             }
         }
 

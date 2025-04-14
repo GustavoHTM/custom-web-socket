@@ -139,7 +139,11 @@ public class SimpleChatPanel extends JFrame {
         this.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                Client.closeConnection();
+                try {
+                    Client.closeConnection();
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
+                }
             }
         });
 
