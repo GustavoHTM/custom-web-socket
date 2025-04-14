@@ -8,14 +8,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.util.Scanner;
 import java.util.concurrent.Executors;
-import java.util.function.Consumer;
-
-import org.client.Client;
-import org.communication.Message;
-import org.communication.MessageBuilder;
-import org.communication.MessageType;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -26,10 +19,14 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
+import org.client.Client;
+import org.communication.IOCommunication;
+import org.communication.Message;
+
 
 public class NameSelectorFrame extends JFrame {
 
-    public NameSelectorFrame(Consumer<String> onValidNameSelected, PrintStream output) {
+    public NameSelectorFrame(PrintStream output) {
         setTitle("Escolha seu nome");
         setSize(350, 160);
         setLocationRelativeTo(null);
@@ -64,18 +61,16 @@ public class NameSelectorFrame extends JFrame {
                     return;
                 }
 
+                IOCommunication ioCommunication = IOCommunication.getInstance(name);
+
                 synchronized (output) {
                     String messageContent = "/choose-name " + name;
-                    Message message = new Message(MessageType.MESSAGE, "Client", messageContent);
-                    output.println(message);
+                    ioCommunication.sendMessage(output, messageContent);
                 }
 
                 Executors.newSingleThreadExecutor().execute(() -> {
                     try {
-                        Scanner input = new Scanner(Client.server.getInputStream());
-
-                        Message message = MessageBuilder.buildMessage(input);
-                        if (message == null) return;
+                        Message message = ioCommunication.waitSingleMessageReceive(Client.server.getInputStream());
 
                         if (message.getType().isError()) {
                             errorLabel.setText(message.getContent());
@@ -84,7 +79,8 @@ public class NameSelectorFrame extends JFrame {
 
                         SwingUtilities.invokeLater(() -> {
                             dispose();
-                            onValidNameSelected.accept(name);
+                            SimpleChatPanel simpleChatPanel = new SimpleChatPanel(name, output);
+                            simpleChatPanel.receiveMessage(message);
                         });
                     } catch (IOException ex) {
                         SwingUtilities.invokeLater(() -> errorLabel.setText("Erro na comunicação com o servidor."));

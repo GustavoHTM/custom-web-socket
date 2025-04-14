@@ -10,24 +10,24 @@ import lombok.NonNull;
 
 public class IOCommunication {
 
-    private final String name;
-
+    private static String name;
     private static IOCommunication instance;
 
-    private IOCommunication(@NonNull String name) {
-        this.name = name;
-    }
+    private IOCommunication() { }
 
-    public synchronized final IOCommunication getInstance(@NonNull String name) {
+    public static synchronized IOCommunication getInstance(@NonNull String newName) {
         if (instance == null) {
-            instance = new IOCommunication(name);
+            instance = new IOCommunication();
         }
+
+        name = newName;
 
         return instance;
     }
 
     public void waitMessageReceive(InputStream inputStream, @NonNull MessageListener messageListener) {
-        try (Scanner input = new Scanner(inputStream)) {
+        try {
+            Scanner input = new Scanner(inputStream);
             while (input.hasNextLine()) {
                 Message message = MessageBuilder.buildMessage(input);
 
@@ -41,7 +41,8 @@ public class IOCommunication {
     }
 
     public Message waitSingleMessageReceive(InputStream inputStream) {
-        try (Scanner input = new Scanner(inputStream)) {
+        try {
+            Scanner input = new Scanner(inputStream);
             if (input.hasNextLine()) {
                 Message message = MessageBuilder.buildMessage(input);
 
@@ -61,7 +62,7 @@ public class IOCommunication {
     }
 
     public void sendMessage(PrintStream output, MessageType type, String content) {
-        Message message = new Message(type, this.name, content);
+        Message message = new Message(type, name, content);
 
         output.println(message);
     }

@@ -23,10 +23,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.OptionalInt;
-
-import org.client.Client;
-import org.communication.Message;
-import org.communication.MessageType;
+import java.util.concurrent.Executors;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
@@ -40,9 +37,13 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.KeyStroke;
-import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.border.Border;
+
+import org.client.Client;
+import org.communication.IOCommunication;
+import org.communication.Message;
+import org.communication.MessageType;
 
 public class SimpleChatPanel extends JFrame {
     private final JPanel chatPanel;
@@ -148,6 +149,15 @@ public class SimpleChatPanel extends JFrame {
         });
 
         setVisible(true);
+
+        IOCommunication ioCommunication = IOCommunication.getInstance(name);
+        Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                ioCommunication.waitMessageReceive(Client.server.getInputStream(), this::receiveMessage);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     private void sendMessage() {
@@ -264,13 +274,5 @@ public class SimpleChatPanel extends JFrame {
         } catch (Exception e) {
             return 1;
         }
-    }
-
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            PrintStream output = new PrintStream(System.out);
-            SimpleChatPanel chat = new SimpleChatPanel("You", output);
-            chat.setVisible(true);
-        });
     }
 }

@@ -27,19 +27,9 @@ public class CommandsValidator {
     private static final String NAME_ALREADY_IN_USE = "Nome já está em uso.";
     private static final String SEND_FILE_ERROR = "Erro ao enviar arquivo para %s.";
 
-    private static final String ERROR_IDENTIFIER = "<ERROR>\n";
-
     private static final String SERVER_MESSAGE_IDENTIFIER = "SERVER";
 
     private static final String FILES_DIRECTORY = getDesktopPath() + File.separator + "socket_files";
-
-    private static final Map<String, String> availableCommandsWithExample = Map.of(
-            "/users", "/users",
-            "/choose-name", "/choose-name <your-name>",
-            "/send-message", "/send-message <user-name> <mensagem>",
-            "/send-file", "/send-file <user-name> <file-path>",
-            "/sair", "/sair"
-    );
 
     private static final Map<String, Integer> mapCodeErrors = Map.of(
             INVALID_COMMAND, 100,
@@ -93,6 +83,12 @@ public class CommandsValidator {
             .collect(Collectors.joining("\n"));
     }
 
+    private static Message buildSimpleErrorMessage(String errorMessage) {
+        String errorMessageContent = "[" + mapCodeErrors.get(errorMessage) + "] " + errorMessage;
+
+        return new Message(MessageType.ERROR, SERVER_MESSAGE_IDENTIFIER, errorMessageContent);
+    }
+
     private static Message buildErrorMessage(String errorMessage) {
         String errorMessageContent = "[" + mapCodeErrors.get(errorMessage) + "] " + errorMessage + "\n\n" + buildAvailableCommands();
 
@@ -111,20 +107,20 @@ public class CommandsValidator {
 
     private static void processChooseNameCommand(Client client, String[] args) {
         if (args.length < 1 || args[0].isEmpty()) {
-            Server.processSendClientMessage(client, buildErrorMessage(INVALID_NAME));
+            Server.processSendClientMessage(client, buildSimpleErrorMessage(INVALID_NAME));
             return;
         }
 
         String name = Arrays.asList(args).subList(0, args.length).stream().reduce((a, b) -> a + " " + b).orElse("");
 
         if (Server.clientList.stream().anyMatch(c -> c.getName().equalsIgnoreCase(name) && !client.getName().equalsIgnoreCase(name))) {
-            Server.processSendClientMessage(client, buildErrorMessage(NAME_ALREADY_IN_USE));
+            Server.processSendClientMessage(client, buildSimpleErrorMessage(NAME_ALREADY_IN_USE));
             return;
         }
 
         client.setName(name);
 
-        String messageContent = "Olá " + name + "\n" + buildAvailableCommands();
+        String messageContent = "Olá " + name + "\n\n" + buildAvailableCommands();
         Message message = new Message(MessageType.MESSAGE, SERVER_MESSAGE_IDENTIFIER, messageContent);
 
         Server.processSendClientMessage(client, message);
