@@ -40,7 +40,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.border.Border;
 
-public class SimpleChatPanel extends JFrame implements ClientUI {
+public class SimpleChatPanel extends JFrame {
     private final JPanel chatPanel;
     private final JTextArea inputField;
     private final PrintStream output;
@@ -192,7 +192,6 @@ public class SimpleChatPanel extends JFrame implements ClientUI {
         }
     }
 
-    @Override
     public void receiveMessage(String from, String message, boolean isError) {
         Color messgaeColor = isError ? new Color(236, 61, 61) : new Color(105, 188, 255);
         appendMessage(from, message.trim(), messgaeColor, FlowLayout.LEFT);

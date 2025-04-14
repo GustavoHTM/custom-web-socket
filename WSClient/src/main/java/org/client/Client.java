@@ -24,11 +24,11 @@ public class Client {
             output = new PrintStream(server.getOutputStream(), true);
 
             new NameSelectorFrame(name -> {
-                ClientUI clientUI = new SimpleChatPanel(output);
+                SimpleChatPanel simpleChatPanel = new SimpleChatPanel(output);
 
                 Executors.newSingleThreadExecutor().execute(() -> {
                     try {
-                        processReceiveServerMessage(clientUI);
+                        processReceiveServerMessage(simpleChatPanel);
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
@@ -40,7 +40,7 @@ public class Client {
         }
     }
 
-    private static void processReceiveServerMessage(ClientUI clientUI) throws IOException {
+    private static void processReceiveServerMessage(SimpleChatPanel simpleChatPanel) throws IOException {
 
         try (Scanner input = new Scanner(server.getInputStream())) {
             while (input.hasNextLine()) {
@@ -62,7 +62,7 @@ public class Client {
                     line = input.nextLine();
                 }
 
-                clientUI.receiveMessage(from, message.toString(), isError);
+                simpleChatPanel.receiveMessage(from, message.toString(), isError);
             }
         } catch (Exception exception) {
             System.out.println("Houve um problema de conexão com o servidor, Erro: " + exception.getMessage());
