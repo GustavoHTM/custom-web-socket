@@ -7,12 +7,14 @@ import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.Executors;
 
+import org.communication.Message;
+import org.communication.MessageBuilder;
+
 public class Server {
 
     private static final int PORT_NUMBER = 4000;
 
     public static final List<Client> clientList = new ArrayList<>();
-    private static final String END_OF_MESSAGE = "<END>";
 
     public static void main(String[] args) {
 
@@ -38,29 +40,23 @@ public class Server {
             Scanner input = new Scanner(client.getSocket().getInputStream());
 
             while (input.hasNextLine()) {
-                StringBuilder message = new StringBuilder();
-
-                String line = input.nextLine();
-                while (!line.equals(END_OF_MESSAGE)) {
-                    message.append(line + "\n");
-                    line = input.nextLine();
-                }
+                Message message = MessageBuilder.buildMessage(input);
+                if (message == null) continue;
 
                 System.out.println("Messagem do cliente ip: " + client.getIp() + " recebida, lendo: " + message.toString().trim());
-                CommandsValidator.processAndValidateCommand(client, message.toString());
+                CommandsValidator.processAndValidateCommand(client, message.getContent());
             }
         } catch (Exception e) {
             System.out.println("Houve um problema de conexão com o cliente de ip " + client.getIp() + ", Erro: " + e.getMessage());
         }
     }
 
-    public static void processSendClientMessage(Client client, String ip, String message) {
+    public static void processSendClientMessage(Client client, Message message) {
         try {
             PrintStream output = new PrintStream(client.getSocket().getOutputStream());
-
-            output.println(message + "\n" + END_OF_MESSAGE);
+            output.println(message);
         } catch (Exception e) {
-            System.out.println("Houve um problema ao enviar mensagem para o cliente de ip " + ip + ", Erro: " + e.getMessage());
+            System.out.println("Houve um problema ao enviar mensagem para o cliente de ip " + client.getIp() + ", Erro: " + e.getMessage());
         }
     }
 }

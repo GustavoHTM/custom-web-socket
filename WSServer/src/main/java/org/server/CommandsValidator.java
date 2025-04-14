@@ -13,6 +13,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.communication.CommandEnum;
+import org.communication.Message;
+import org.communication.MessageType;
 
 import javax.swing.filechooser.FileSystemView;
 
@@ -26,7 +28,8 @@ public class CommandsValidator {
     private static final String SEND_FILE_ERROR = "Erro ao enviar arquivo para %s.";
 
     private static final String ERROR_IDENTIFIER = "<ERROR>\n";
-    public static final String SERVER_MESSAGE_IDENTIFIER = "SERVER\n";
+
+    private static final String SERVER_MESSAGE_IDENTIFIER = "SERVER";
 
     private static final String FILES_DIRECTORY = getDesktopPath() + File.separator + "socket_files";
 
@@ -47,10 +50,10 @@ public class CommandsValidator {
             SEND_FILE_ERROR, 105
     );
 
-    static void processAndValidateCommand(Client client, String message) {
-        String[] args = message.trim().split(" ");
+    static void processAndValidateCommand(Client client, String messageContent) {
+        String[] args = messageContent.trim().split(" ");
         if (args.length < 1) {
-            Server.processSendClientMessage(client, client.getIp(), buildErrorMessage(INVALID_COMMAND));
+            Server.processSendClientMessage(client, buildErrorMessage(INVALID_COMMAND));
             return;
         }
 
@@ -58,7 +61,7 @@ public class CommandsValidator {
         CommandEnum commandEnum = CommandEnum.convert(command);
 
         if (commandEnum == null) {
-            Server.processSendClientMessage(client, client.getIp(), buildErrorMessage(INVALID_COMMAND));
+            Server.processSendClientMessage(client, buildErrorMessage(INVALID_COMMAND));
             return;
         }
 
@@ -90,8 +93,10 @@ public class CommandsValidator {
             .collect(Collectors.joining("\n"));
     }
 
-    private static String buildErrorMessage(String errorMessage) {
-        return ERROR_IDENTIFIER + "[" + mapCodeErrors.get(errorMessage) + "] " + errorMessage + "\n\n" + buildAvailableCommands();
+    private static Message buildErrorMessage(String errorMessage) {
+        String errorMessageContent = "[" + mapCodeErrors.get(errorMessage) + "] " + errorMessage + "\n\n" + buildAvailableCommands();
+
+        return new Message(MessageType.ERROR, SERVER_MESSAGE_IDENTIFIER, errorMessageContent);
     }
 
     private static void processShowUsersCommand(Client client) {
@@ -100,52 +105,58 @@ public class CommandsValidator {
             users.append(c.getName()).append("\n");
         }
 
-        Server.processSendClientMessage(client, client.getIp(), SERVER_MESSAGE_IDENTIFIER + users);
+        Message message = new Message(MessageType.MESSAGE, SERVER_MESSAGE_IDENTIFIER, users.toString());
+        Server.processSendClientMessage(client, message);
     }
 
     private static void processChooseNameCommand(Client client, String[] args) {
         if (args.length < 1 || args[0].isEmpty()) {
-            Server.processSendClientMessage(client, client.getIp(), buildErrorMessage(INVALID_NAME));
+            Server.processSendClientMessage(client, buildErrorMessage(INVALID_NAME));
             return;
         }
 
         String name = Arrays.asList(args).subList(0, args.length).stream().reduce((a, b) -> a + " " + b).orElse("");
 
         if (Server.clientList.stream().anyMatch(c -> c.getName().equalsIgnoreCase(name) && !client.getName().equalsIgnoreCase(name))) {
-            Server.processSendClientMessage(client, client.getIp(), buildErrorMessage(NAME_ALREADY_IN_USE));
+            Server.processSendClientMessage(client, buildErrorMessage(NAME_ALREADY_IN_USE));
             return;
         }
 
         client.setName(name);
 
-        Server.processSendClientMessage(client, client.getIp(), SERVER_MESSAGE_IDENTIFIER + "Olá " + name + "\n" + buildAvailableCommands());
+        String messageContent = "Olá " + name + "\n" + buildAvailableCommands();
+        Message message = new Message(MessageType.MESSAGE, SERVER_MESSAGE_IDENTIFIER, messageContent);
+
+        Server.processSendClientMessage(client, message);
     }
 
     private static void processSendMessageCommand(Client client, String[] args) {
         if (args.length < 2 || args[0].isEmpty() || args[1].isEmpty()) {
-            Server.processSendClientMessage(client, client.getIp(), buildErrorMessage(INVALID_MESSAGE));
+            Server.processSendClientMessage(client, buildErrorMessage(INVALID_MESSAGE));
             return;
         }
 
         String userName = args[0];
-        String message = Arrays.asList(args).subList(1, args.length).stream().reduce((a, b) -> a + " " + b).orElse("");
+        String messageContent = Arrays.asList(args).subList(1, args.length).stream().reduce((a, b) -> a + " " + b).orElse("");
 
         Client recipient = Server.clientList.stream()
-                .filter(c -> c.getName().equalsIgnoreCase(userName))
-                .findFirst()
-                .orElse(null);
+            .filter(c -> c.getName().equalsIgnoreCase(userName))
+            .findFirst()
+            .orElse(null);
 
         if (recipient == null || client.getName().equalsIgnoreCase(userName)) {
-            Server.processSendClientMessage(client, client.getIp(), buildErrorMessage(USER_NOT_FOUND));
+            Server.processSendClientMessage(client, buildErrorMessage(USER_NOT_FOUND));
             return;
         }
 
-        Server.processSendClientMessage(recipient, recipient.getIp(), client.getName() + "\n" + message);
+        Message message = new Message(MessageType.MESSAGE, client.getName(), messageContent);
+
+        Server.processSendClientMessage(recipient, message);
     }
 
     private static void processSendFileCommand(Client client, String[] args) {
         if (args.length < 2 || args[1].isEmpty()) {
-            Server.processSendClientMessage(client, client.getIp(), buildErrorMessage(INVALID_NAME));
+            Server.processSendClientMessage(client, buildErrorMessage(INVALID_NAME));
             return;
         }
 
@@ -158,7 +169,7 @@ public class CommandsValidator {
             .orElse(null);
 
         if (targetClient == null) {
-            Server.processSendClientMessage(client, client.getIp(), buildErrorMessage(USER_NOT_FOUND));
+            Server.processSendClientMessage(client, buildErrorMessage(USER_NOT_FOUND));
             return;
         }
 
@@ -202,10 +213,13 @@ public class CommandsValidator {
 //            dataOut.write(fileData);
 //            dataOut.flush();
 
-            Server.processSendClientMessage(targetClient, targetClient.getIp(), client.getName() + "\nenviando arquivo: " + filepath.getFileName().toString());
-            Server.processSendClientMessage(client, client.getIp(), SERVER_MESSAGE_IDENTIFIER + "Arquivo enviado com sucesso para " + targetName);
+            Message successfulFileSentMessage = new Message(MessageType.MESSAGE, SERVER_MESSAGE_IDENTIFIER, "Arquivo enviado com sucesso para " + targetName);
+            Server.processSendClientMessage(client, successfulFileSentMessage);
+
+            Message fileReceivedMessage = new Message(MessageType.MESSAGE, client.getName(), "enviando arquivo: " + filepath.getFileName().toString());
+            Server.processSendClientMessage(targetClient, fileReceivedMessage);
         } catch (IOException e) {
-            Server.processSendClientMessage(client, client.getIp(), buildErrorMessage(String.format(SEND_FILE_ERROR, targetName)));
+            Server.processSendClientMessage(client, buildErrorMessage(String.format(SEND_FILE_ERROR, targetName)));
             System.out.println("Erro ao enviar arquivo para " + targetName + ", Erro: " + e.getMessage());
         }
     }
@@ -217,9 +231,11 @@ public class CommandsValidator {
     }
 
     private static void processExitCommand(Client client) {
-
         try {
-            Server.processSendClientMessage(client, client.getIp(), SERVER_MESSAGE_IDENTIFIER + "Conexão encerrada.");
+            String messageContent = "Conexão encerrada.";
+            Message message = new Message(MessageType.MESSAGE, SERVER_MESSAGE_IDENTIFIER, messageContent);
+
+            Server.processSendClientMessage(client, message);
             client.getSocket().close();
 
             System.out.println("Cliente de ip " + client.getIp() + " desconectado.");

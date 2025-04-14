@@ -30,7 +30,7 @@ public class Client {
             output = new PrintStream(server.getOutputStream(), true);
 
             new NameSelectorFrame(name -> {
-                SimpleChatPanel simpleChatPanel = new SimpleChatPanel(output);
+                SimpleChatPanel simpleChatPanel = new SimpleChatPanel(name, output);
 
                 Executors.newSingleThreadExecutor().execute(() -> {
                     try {

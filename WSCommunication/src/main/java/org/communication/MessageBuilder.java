@@ -21,6 +21,6 @@ public class MessageBuilder {
             line = scanner.nextLine();
         }
 
-        return new Message(messageType, from, messageContent.toString());
+        return new Message(messageType, from, messageContent.toString().trim());
     }
 }

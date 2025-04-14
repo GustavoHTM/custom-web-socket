@@ -12,9 +12,20 @@ import java.util.Scanner;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
-import javax.swing.*;
-
 import org.client.Client;
+import org.communication.Message;
+import org.communication.MessageBuilder;
+import org.communication.MessageType;
+
+import javax.swing.AbstractAction;
+import javax.swing.Action;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+
 
 public class NameSelectorFrame extends JFrame {
 
@@ -54,32 +65,27 @@ public class NameSelectorFrame extends JFrame {
                 }
 
                 synchronized (output) {
-                    output.println("/choose-name " + name + "\n<END>");
+                    String messageContent = "/choose-name " + name;
+                    Message message = new Message(MessageType.MESSAGE, "Client", messageContent);
+                    output.println(message);
                 }
 
                 Executors.newSingleThreadExecutor().execute(() -> {
                     try {
                         Scanner input = new Scanner(Client.server.getInputStream());
-                        String response = input.nextLine();
-                        String errorMessage = null;
 
-                        if (response.equals("<ERROR>")) {
-                            errorMessage = input.nextLine();
+                        Message message = MessageBuilder.buildMessage(input);
+                        if (message == null) return;
+
+                        if (message.getType().isError()) {
+                            errorLabel.setText(message.getContent());
+                            return;
                         }
 
-                        String line = input.nextLine();
-                        while (!line.equals("<END>")) {
-                            line = input.nextLine();
-                        }
-
-                        if (errorMessage != null) {
-                            errorLabel.setText(errorMessage);
-                        } else {
-                            SwingUtilities.invokeLater(() -> {
-                                dispose();
-                                onValidNameSelected.accept(name);
-                            });
-                        }
+                        SwingUtilities.invokeLater(() -> {
+                            dispose();
+                            onValidNameSelected.accept(name);
+                        });
                     } catch (IOException ex) {
                         SwingUtilities.invokeLater(() -> errorLabel.setText("Erro na comunicação com o servidor."));
                     }

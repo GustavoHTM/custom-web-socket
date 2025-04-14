@@ -24,7 +24,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.OptionalInt;
 
+import org.client.Client;
 import org.communication.Message;
+import org.communication.MessageType;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
@@ -42,18 +44,17 @@ import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.border.Border;
 
-import org.client.Client;
-
 public class SimpleChatPanel extends JFrame {
     private final JPanel chatPanel;
     private final JTextArea inputField;
     private final PrintStream output;
 
     private static final Font FONT = new Font("Consolas", Font.PLAIN, 17);
+    private static final String CLIENT_MESSAGE_IDENTIFIER = "You";
 
-    public SimpleChatPanel(PrintStream output) {
+    public SimpleChatPanel(String name, PrintStream output) {
         this.output = output;
-        setTitle("Simple Chat");
+        setTitle("Simple Chat - " + name);
         setSize(400, 900);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
@@ -124,7 +125,7 @@ public class SimpleChatPanel extends JFrame {
                 try {
                     evt.acceptDrop(DnDConstants.ACTION_COPY);
                     List<File> droppedFiles = (List<File>) evt.getTransferable()
-                            .getTransferData(DataFlavor.javaFileListFlavor);
+                        .getTransferData(DataFlavor.javaFileListFlavor);
                     if (!droppedFiles.isEmpty()) {
                         File file = droppedFiles.get(0);
                         inputField.setText("/send-file <user-name> " + file.getAbsolutePath());
@@ -146,15 +147,18 @@ public class SimpleChatPanel extends JFrame {
     }
 
     private void sendMessage() {
-        String message = inputField.getText().trim();
-        if (message.isEmpty()) return;
+        String messageContent = inputField.getText().trim();
+        if (messageContent.isEmpty()) return;
 
-        appendMessage("You", message, new Color(173, 255, 47), FlowLayout.RIGHT);
-        this.output.println(message + "\n<END>");
+        appendMessage("You", messageContent, new Color(173, 255, 47), FlowLayout.RIGHT);
+
+        Message message = new Message(MessageType.MESSAGE, CLIENT_MESSAGE_IDENTIFIER, messageContent);
+        this.output.println(message);
+
         inputField.setText("");
 
-        if (message.startsWith("/send-file")) {
-            sendFile(message);
+        if (messageContent.startsWith("/send-file")) {
+            sendFile(messageContent);
         }
     }
 
@@ -208,8 +212,8 @@ public class SimpleChatPanel extends JFrame {
         Border border = BorderFactory.createLineBorder(color.darker(), 2);
 
         OptionalInt columns = Arrays.stream(message.split("\n"))
-                .mapToInt(String::length)
-                .max();
+            .mapToInt(String::length)
+            .max();
 
         JTextArea messageArea = new JTextArea(message);
         messageArea.setLineWrap(true);
@@ -222,10 +226,10 @@ public class SimpleChatPanel extends JFrame {
         messageArea.setBorder(BorderFactory.createCompoundBorder(border, BorderFactory.createEmptyBorder(5, 10, 5, 10)));
         messageArea.revalidate();
         messageArea.setMaximumSize(new Dimension(
-                columns.isPresent()
-                        ? Math.min(columns.getAsInt() * 30, 340)
-                        : 340,
-                getTotalVisibleLines(messageArea) * 20 + 15
+            columns.isPresent()
+                ? Math.min(columns.getAsInt() * 30, 340)
+                : 340,
+            getTotalVisibleLines(messageArea) * 20 + 15
         ));
 
         SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
@@ -251,8 +255,8 @@ public class SimpleChatPanel extends JFrame {
             String content = textArea.getText();
             List<String> lines = Arrays.asList(content.split("\n"));
             return lines.stream()
-                    .mapToInt(line -> line.length() / 36)
-                    .sum() + lines.size();
+                .mapToInt(line -> line.length() / 36)
+                .sum() + lines.size();
         } catch (Exception e) {
             return 1;
         }
@@ -261,7 +265,7 @@ public class SimpleChatPanel extends JFrame {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             PrintStream output = new PrintStream(System.out);
-            SimpleChatPanel chat = new SimpleChatPanel(output);
+            SimpleChatPanel chat = new SimpleChatPanel("You", output);
             chat.setVisible(true);
         });
     }
