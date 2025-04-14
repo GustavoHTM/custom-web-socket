@@ -1,3 +1,5 @@
+package org.client;
+
 import java.io.IOException;
 import java.io.PrintStream;
 import java.net.Socket;
@@ -44,10 +46,13 @@ public class Client {
             while (input.hasNextLine()) {
                 StringBuilder message = new StringBuilder();
                 String from = "Server";
-                boolean isError;
+                boolean isError = false;
 
                 String firstLine = input.nextLine();
-                if (!(isError = firstLine.equals(ERROR_MESSAGE))) {
+                if (firstLine.equals("<FILE>")) {
+
+                    from = input.nextLine();
+                } else if (!(isError = firstLine.equals(ERROR_MESSAGE))) {
                     from = firstLine;
                 }
 

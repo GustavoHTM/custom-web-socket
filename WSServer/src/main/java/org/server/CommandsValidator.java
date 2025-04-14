@@ -1,3 +1,5 @@
+package org.server;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.File;
@@ -9,6 +11,8 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import org.communication.CommandEnum;
 
 import javax.swing.filechooser.FileSystemView;
 

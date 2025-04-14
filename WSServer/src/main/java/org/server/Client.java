@@ -1,7 +1,6 @@
+package org.server;
+
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 
 public class Client {
 
