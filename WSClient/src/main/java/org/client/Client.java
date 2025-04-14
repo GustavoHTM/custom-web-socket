@@ -8,7 +8,6 @@ import org.client.ui.NameSelectorFrame;
 import org.communication.Message;
 import org.communication.MessageType;
 
-// todo: Inverter dependencia, fazer chat instanciar o client ou receber uma instancia de client
 public class Client {
 
     private static final int SERVER_PORT_NUMBER = 4000;
