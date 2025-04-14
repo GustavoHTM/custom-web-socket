@@ -20,7 +20,8 @@ public class Message {
         this.type = type;
     }
 
-    public String buildMessage() {
+    @Override
+    public String toString() {
         StringBuilder message = new StringBuilder();
 
         message.append(this.type.getCode());
@@ -33,5 +34,4 @@ public class Message {
 
         return message.toString();
     }
-
 }
