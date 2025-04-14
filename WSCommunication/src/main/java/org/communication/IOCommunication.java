@@ -12,8 +12,18 @@ public class IOCommunication {
 
     private final String name;
 
-    public IOCommunication(@NonNull String name) {
+    private static IOCommunication instance;
+
+    private IOCommunication(@NonNull String name) {
         this.name = name;
+    }
+
+    public synchronized final IOCommunication getInstance(@NonNull String name) {
+        if (instance == null) {
+            instance = new IOCommunication(name);
+        }
+
+        return instance;
     }
 
     public void waitMessageReceive(InputStream inputStream, @NonNull MessageListener messageListener) {
