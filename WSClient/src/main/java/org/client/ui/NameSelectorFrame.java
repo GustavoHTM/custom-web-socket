@@ -1,4 +1,4 @@
-package org.client;
+package org.client.ui;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -13,6 +13,8 @@ import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 import javax.swing.*;
+
+import org.client.Client;
 
 public class NameSelectorFrame extends JFrame {
 

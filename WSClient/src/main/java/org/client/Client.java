@@ -9,6 +9,9 @@ import java.util.concurrent.Executors;
 import org.communication.Message;
 import org.communication.MessageBuilder;
 
+import org.client.ui.NameSelectorFrame;
+import org.client.ui.SimpleChatPanel;
+
 // todo: Inverter dependencia, fazer chat instanciar o client ou receber uma instancia de client
 public class Client {
 

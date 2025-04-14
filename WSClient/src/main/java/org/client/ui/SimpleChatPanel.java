@@ -1,4 +1,4 @@
-package org.client;
+package org.client.ui;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -41,6 +41,8 @@ import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.border.Border;
+
+import org.client.Client;
 
 public class SimpleChatPanel extends JFrame {
     private final JPanel chatPanel;

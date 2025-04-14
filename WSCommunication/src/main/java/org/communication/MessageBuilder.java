@@ -23,5 +23,4 @@ public class MessageBuilder {
 
         return new Message(messageType, from, messageContent.toString());
     }
-
 }
