@@ -145,11 +145,11 @@ public class SimpleChatPanel extends JFrame {
         this.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                try {
-                    Client.closeConnection();
-                } catch (IOException ex) {
-                    throw new RuntimeException(ex);
-                }
+            try {
+                Client.closeConnection();
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            }
             }
         });
 
@@ -167,14 +167,22 @@ public class SimpleChatPanel extends JFrame {
 
     private void sendMessage() {
         String messageContent = inputField.getText().trim();
+        inputField.setText("");
+
         if (messageContent.isEmpty()) return;
+
+        if (messageContent.equals("/clear")) {
+            chatPanel.removeAll();
+            chatPanel.revalidate();
+            chatPanel.repaint();
+            return;
+        }
 
         appendMessage("You", messageContent, new Color(173, 255, 47), FlowLayout.RIGHT);
 
         Message message = new Message(MessageType.MESSAGE, CLIENT_MESSAGE_IDENTIFIER, messageContent);
         this.output.println(message);
 
-        inputField.setText("");
 
         if (messageContent.startsWith("/send-file")) {
             sendFile(messageContent);
