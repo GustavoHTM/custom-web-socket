@@ -1,11 +1,19 @@
 package org.communication;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Scanner;
 
 import org.communication.handler.MessageListener;
@@ -107,6 +115,53 @@ public class IOCommunication {
                 }
             } catch (IOException ignored) {
             }
+        }
+    }
+
+    public byte[] receiveFile(InputStream inputStream, Path receivePath, String filename) {
+        try {
+            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+            DataInputStream dataIn = new DataInputStream(inputStream);
+
+            if (bufferedReader.ready()) {
+                String possibleError = bufferedReader.readLine();
+
+                if (MessageType.ERROR.name().equals(possibleError)) {
+                    System.out.println("Ocorreu um erro no recebimento do arquivo.");
+                    return null;
+                }
+            }
+
+            long fileSize = dataIn.readLong();
+
+            byte[] buffer = new byte[4096];
+            int bytesRead;
+            long totalRead = 0;
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+            while (totalRead < fileSize && (bytesRead = dataIn.read(buffer, 0, (int)Math.min(buffer.length, fileSize - totalRead))) != -1) {
+                baos.write(buffer, 0, bytesRead);
+                totalRead += bytesRead;
+            }
+
+            byte[] fileData = baos.toByteArray();
+
+            if (Files.notExists(receivePath)) {
+                Files.createDirectories(receivePath);
+            }
+
+            Path newFilepath = Paths.get(receivePath.toString(), filename);
+
+            FileOutputStream fileOutputStream = new FileOutputStream(newFilepath.toString());
+            fileOutputStream.write(fileData);
+            fileOutputStream.close();
+            System.out.println("Arquivo criado com sucesso!");
+
+            return fileData;
+        } catch (IOException e) {
+            System.out.println("Erro ao enviar arquivo, Erro: " + e.getMessage());
+            return null;
         }
     }
 }

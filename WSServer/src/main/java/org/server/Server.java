@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.Executors;
 
+import org.communication.IOCommunication;
 import org.communication.Message;
 import org.communication.MessageBuilder;
 
@@ -15,6 +16,7 @@ public class Server {
     private static final int PORT_NUMBER = 4000;
 
     public static final List<Client> clientList = new ArrayList<>();
+    public static final IOCommunication ioCommunication = IOCommunication.getInstance(CommandsValidator.SERVER_MESSAGE_IDENTIFIER);
 
     public static void main(String[] args) {
 
