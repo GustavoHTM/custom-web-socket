@@ -23,7 +23,11 @@ import java.util.List;
 import java.util.OptionalInt;
 import java.util.concurrent.Executors;
 
+import org.client.Client;
 import org.communication.CommandEnum;
+import org.communication.FileUtils;
+import org.communication.IOCommunication;
+import org.communication.Message;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
@@ -40,11 +44,6 @@ import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.border.Border;
-
-import org.client.Client;
-import org.communication.FileUtils;
-import org.communication.IOCommunication;
-import org.communication.Message;
 
 public class SimpleChatPanel extends JFrame {
     private final JPanel chatPanel;
@@ -148,11 +147,11 @@ public class SimpleChatPanel extends JFrame {
         this.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-            try {
-                Client.closeConnection();
-            } catch (IOException ex) {
-                throw new RuntimeException(ex);
-            }
+                try {
+                    Client.closeConnection();
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
+                }
             }
         });
 
