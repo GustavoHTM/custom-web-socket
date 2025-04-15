@@ -272,6 +272,8 @@ public class SimpleChatPanel extends JFrame {
         chatPanel.add(messagePanel);
         chatPanel.revalidate();
         chatPanel.repaint();
+
+        SwingUtilities.invokeLater(() -> scrollPane.getVerticalScrollBar().setValue(scrollPane.getVerticalScrollBar().getMaximum()));
     }
 
     private void appendFileMessage(String from, String message, Color color, int orientation) {
@@ -345,6 +347,8 @@ public class SimpleChatPanel extends JFrame {
         chatPanel.add(messagePanel);
         chatPanel.revalidate();
         chatPanel.repaint();
+
+        SwingUtilities.invokeLater(() -> scrollPane.getVerticalScrollBar().setValue(scrollPane.getVerticalScrollBar().getMaximum()));
     }
 
     private static int getTotalVisibleLines(JTextArea textArea) {
