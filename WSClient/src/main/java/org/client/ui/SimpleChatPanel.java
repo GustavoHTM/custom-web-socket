@@ -43,6 +43,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.border.Border;
 
@@ -50,6 +51,7 @@ public class SimpleChatPanel extends JFrame {
     private final JPanel chatPanel;
     private final JTextArea inputField;
     private final PrintStream output;
+    private final JScrollPane scrollPane;
 
     private static final Font FONT = new Font("Consolas", Font.PLAIN, 17);
     private static final String CLIENT_MESSAGE_IDENTIFIER = "You";
@@ -67,9 +69,11 @@ public class SimpleChatPanel extends JFrame {
         chatPanel.setLayout(new BoxLayout(chatPanel, BoxLayout.Y_AXIS));
         chatPanel.setMaximumSize(new Dimension(400, Integer.MAX_VALUE));
 
-        JScrollPane scrollPane = new JScrollPane(chatPanel);
+        scrollPane = new JScrollPane(chatPanel);
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
         scrollPane.setMaximumSize(new Dimension(400, Integer.MAX_VALUE));
+        scrollPane.getVerticalScrollBar().setUnitIncrement(20);
+
         add(scrollPane, BorderLayout.CENTER);
 
         JPanel inputPanel = new JPanel(new BorderLayout());
