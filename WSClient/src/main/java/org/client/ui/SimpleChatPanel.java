@@ -13,9 +13,7 @@ import java.awt.dnd.DropTargetDropEvent;
 import java.awt.event.ActionEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.text.SimpleDateFormat;
@@ -24,12 +22,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.OptionalInt;
 import java.util.concurrent.Executors;
-
-import org.client.Client;
-import org.communication.FileUtils;
-import org.communication.IOCommunication;
-import org.communication.Message;
-import org.communication.MessageType;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
@@ -47,14 +39,19 @@ import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.border.Border;
 
+import org.client.Client;
+import org.communication.FileUtils;
+import org.communication.IOCommunication;
+import org.communication.Message;
+
 public class SimpleChatPanel extends JFrame {
     private final JPanel chatPanel;
     private final JTextArea inputField;
     private final PrintStream output;
     private final JScrollPane scrollPane;
+    private final IOCommunication ioCommunication;
 
     private static final Font FONT = new Font("Consolas", Font.PLAIN, 17);
-    private static final String CLIENT_MESSAGE_IDENTIFIER = "You";
 
     public SimpleChatPanel(String name, PrintStream output) {
         this.output = output;
@@ -155,7 +152,7 @@ public class SimpleChatPanel extends JFrame {
 
         setVisible(true);
 
-        IOCommunication ioCommunication = IOCommunication.getInstance(name);
+        ioCommunication = IOCommunication.getInstance(name);
         Executors.newSingleThreadExecutor().execute(() -> {
             try {
                 ioCommunication.waitMessageReceive(Client.server.getInputStream(), this::receiveMessage);
@@ -180,54 +177,14 @@ public class SimpleChatPanel extends JFrame {
 
         appendMessage("You", messageContent, new Color(173, 255, 47), FlowLayout.RIGHT);
 
-        Message message = new Message(MessageType.MESSAGE, CLIENT_MESSAGE_IDENTIFIER, messageContent);
-        this.output.println(message);
+        ioCommunication.sendMessage(output, messageContent);
 
 
         if (messageContent.startsWith("/send-file")) {
-            sendFile(messageContent);
-        }
-    }
+            String[] parts = messageContent.split(" ");
+            String filePath = String.join(" ", Arrays.copyOfRange(parts, 2, parts.length));
 
-    private void sendFile(String message) {
-        DataOutputStream dataOutputStream;
-        FileInputStream fileInputStream = null;
-
-        try {
-            String[] args = message.split(" ");
-
-            String[] subArray = Arrays.copyOfRange(args, 2, args.length);
-            String filename = String.join(" ", subArray);
-            File fileToSend = new File(filename);
-
-            if (!fileToSend.exists()) {
-                fileToSend.createNewFile();
-            }
-
-            dataOutputStream = new DataOutputStream(output);
-            fileInputStream = new FileInputStream(fileToSend);
-            dataOutputStream.writeLong(fileToSend.length());
-
-            byte[] buffer = new byte[4096];
-            int bytesRead;
-            long totalBytesSent = 0;
-
-            while ((bytesRead = fileInputStream.read(buffer)) != -1) {
-                output.write(buffer, 0, bytesRead);
-                totalBytesSent += bytesRead;
-
-                double progress = (double) totalBytesSent / fileToSend.length() * 100;
-                System.out.printf("Enviando: %s - Progresso: %.2f%%\n", fileToSend.getName(), progress);
-            }
-        } catch (Exception exception) {
-            System.out.println("ERRO");
-        } finally {
-            try {
-                if (fileInputStream != null) {
-                    fileInputStream.close();
-                }
-            } catch (IOException ignored) {
-            }
+            ioCommunication.sendFile(output, filePath);
         }
     }
 
