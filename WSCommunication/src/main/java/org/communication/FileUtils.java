@@ -9,6 +9,10 @@ import javax.swing.filechooser.FileSystemView;
 
 public class FileUtils {
 
+    public static String getTempPath() {
+        return System.getProperty("java.io.tmpdir");
+    }
+
     public static String getDesktopPath() {
         FileSystemView view = FileSystemView.getFileSystemView();
         File file = view.getHomeDirectory();

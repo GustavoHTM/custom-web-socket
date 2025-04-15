@@ -30,7 +30,7 @@ public class CommandsValidator {
 
     private static final String SERVER_MESSAGE_IDENTIFIER = "SERVER";
 
-    private static final String FILES_DIRECTORY = FileUtils.getDesktopPath() + File.separator + "socket_files";
+    private static final String FILES_DIRECTORY = FileUtils.getTempPath() + File.separator + "socket_files";
 
     private static final Map<String, Integer> mapCodeErrors = Map.of(
             INVALID_COMMAND, 100,
@@ -190,7 +190,7 @@ public class CommandsValidator {
 
             byte[] fileData = baos.toByteArray();
 
-            Path fileDirectory = Paths.get(FILES_DIRECTORY, targetName);
+            Path fileDirectory = Paths.get(FILES_DIRECTORY, targetName, client.getName());
             if (Files.notExists(fileDirectory)) {
                 Files.createDirectories(fileDirectory);
             }
@@ -199,9 +199,9 @@ public class CommandsValidator {
 
             try (FileOutputStream fileOutputStream = new FileOutputStream(newFilepath.toString())) {
                 fileOutputStream.write(fileData);
-                System.out.println("Arquivo criado com sucesso!");
+                System.out.println("Arquivo criado com sucesso em " + newFilepath);
             } catch (IOException e) {
-                System.err.println("Erro ao criar arquivo: " + e.getMessage());
+                System.err.println("Erro ao criar arquivo " + newFilepath + ": " + e.getMessage());
             }
 
             Message successfulFileSentMessage = new Message(MessageType.MESSAGE, SERVER_MESSAGE_IDENTIFIER, "Arquivo enviado com sucesso para " + targetName);
