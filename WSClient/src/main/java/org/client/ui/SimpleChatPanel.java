@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.OptionalInt;
 import java.util.concurrent.Executors;
 
+import org.communication.CommandEnum;
+
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
@@ -97,7 +99,9 @@ public class SimpleChatPanel extends JFrame {
             if (result == JFileChooser.APPROVE_OPTION) {
                 File selectedFile = fileChooser.getSelectedFile();
                 String path = selectedFile.getAbsolutePath();
-                inputField.setText("/send-file <user-name> " + path);
+
+                String command = CommandEnum.generateCommand(CommandEnum.SEND_FILE, null, path);
+                inputField.setText(command);
             }
         });
 
@@ -131,7 +135,9 @@ public class SimpleChatPanel extends JFrame {
                         .getTransferData(DataFlavor.javaFileListFlavor);
                     if (!droppedFiles.isEmpty()) {
                         File file = droppedFiles.get(0);
-                        inputField.setText("/send-file <user-name> " + file.getAbsolutePath());
+
+                        String command = CommandEnum.generateCommand(CommandEnum.SEND_FILE, null, file.getAbsolutePath());
+                        inputField.setText(command);
                     }
                 } catch (Exception ex) {
                     System.out.println("Erro ao processar arquivo: " + ex.getMessage());
@@ -168,7 +174,7 @@ public class SimpleChatPanel extends JFrame {
 
         if (messageContent.isEmpty()) return;
 
-        if (messageContent.equals("/clear")) {
+        if (messageContent.equals(CommandEnum.CLEAR.getCommand())) {
             chatPanel.removeAll();
             chatPanel.revalidate();
             chatPanel.repaint();
@@ -179,8 +185,7 @@ public class SimpleChatPanel extends JFrame {
 
         ioCommunication.sendMessage(output, messageContent);
 
-
-        if (messageContent.startsWith("/send-file")) {
+        if (messageContent.startsWith(CommandEnum.SEND_FILE.getCommand())) {
             String[] parts = messageContent.split(" ");
             String filePath = String.join(" ", Arrays.copyOfRange(parts, 2, parts.length));
 
@@ -295,7 +300,9 @@ public class SimpleChatPanel extends JFrame {
             if (result == JFileChooser.APPROVE_OPTION) {
                 File selectedFile = folderChooser.getSelectedFile();
                 String path = selectedFile.getAbsolutePath();
-                inputField.setText("/download-file " + from + " " + filename + " " + path);
+
+                String command = CommandEnum.generateCommand(CommandEnum.DOWNLOAD_FILE, from, filename, path);
+                inputField.setText(command);
             }
         });
 
