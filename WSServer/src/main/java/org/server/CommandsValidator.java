@@ -1,50 +1,35 @@
 package org.server;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.communication.CommandEnum;
+import org.communication.ErrorEnum;
 import org.communication.FileUtils;
 import org.communication.Message;
 import org.communication.MessageType;
 
-import javax.swing.filechooser.FileSystemView;
-
 public class CommandsValidator {
-
-    private static final String INVALID_COMMAND = "Comando inválido.";
-    private static final String INVALID_NAME = "Nome inválido.";
-    private static final String INVALID_MESSAGE = "Mensagem inválida.";
-    private static final String USER_NOT_FOUND = "Usuário não encontrado.";
-    private static final String NAME_ALREADY_IN_USE = "Nome já está em uso.";
-    private static final String SEND_FILE_ERROR = "Erro ao enviar arquivo para %s.";
 
     private static final String SERVER_MESSAGE_IDENTIFIER = "SERVER";
 
     private static final String FILES_DIRECTORY = FileUtils.getDesktopPath() + File.separator + "socket_files";
 
-    private static final Map<String, Integer> mapCodeErrors = Map.of(
-            INVALID_COMMAND, 100,
-            INVALID_NAME, 101,
-            INVALID_MESSAGE, 102,
-            USER_NOT_FOUND, 103,
-            NAME_ALREADY_IN_USE, 104,
-            SEND_FILE_ERROR, 105
-    );
-
     static void processAndValidateCommand(Client client, String messageContent) {
         String[] args = messageContent.trim().split(" ");
         if (args.length < 1) {
-            Server.processSendClientMessage(client, buildErrorMessage(INVALID_COMMAND));
+            Server.processSendClientMessage(client, buildErrorMessage(ErrorEnum.INVALID_COMMAND));
             return;
         }
 
@@ -52,7 +37,7 @@ public class CommandsValidator {
         CommandEnum commandEnum = CommandEnum.convert(command);
 
         if (commandEnum == null) {
-            Server.processSendClientMessage(client, buildErrorMessage(INVALID_COMMAND));
+            Server.processSendClientMessage(client, buildErrorMessage(ErrorEnum.INVALID_COMMAND));
             return;
         }
 
@@ -84,14 +69,14 @@ public class CommandsValidator {
             .collect(Collectors.joining("\n"));
     }
 
-    private static Message buildSimpleErrorMessage(String errorMessage) {
-        String errorMessageContent = "[" + mapCodeErrors.get(errorMessage) + "] " + errorMessage;
+    private static Message buildSimpleErrorMessage(ErrorEnum errorEnum, String... args) {
+        String errorMessageContent = "[" + errorEnum.getCode() + "] " + String.format(errorEnum.getDescriptor(), args);
 
         return new Message(MessageType.ERROR, SERVER_MESSAGE_IDENTIFIER, errorMessageContent);
     }
 
-    private static Message buildErrorMessage(String errorMessage) {
-        String errorMessageContent = "[" + mapCodeErrors.get(errorMessage) + "] " + errorMessage + "\n\n" + buildAvailableCommands();
+    private static Message buildErrorMessage(ErrorEnum errorEnum, String... args) {
+        String errorMessageContent = "[" + errorEnum.getCode() + "] " + String.format(errorEnum.getDescriptor(), args) + "\n\n" + buildAvailableCommands();
 
         return new Message(MessageType.ERROR, SERVER_MESSAGE_IDENTIFIER, errorMessageContent);
     }
@@ -108,14 +93,14 @@ public class CommandsValidator {
 
     private static void processChooseNameCommand(Client client, String[] args) {
         if (args.length < 1 || args[0].isEmpty()) {
-            Server.processSendClientMessage(client, buildSimpleErrorMessage(INVALID_NAME));
+            Server.processSendClientMessage(client, buildSimpleErrorMessage(ErrorEnum.INVALID_NAME));
             return;
         }
 
         String name = Arrays.asList(args).subList(0, args.length).stream().reduce((a, b) -> a + " " + b).orElse("");
 
         if (Server.clientList.stream().anyMatch(c -> c.getName().equalsIgnoreCase(name) && !client.getName().equalsIgnoreCase(name))) {
-            Server.processSendClientMessage(client, buildSimpleErrorMessage(NAME_ALREADY_IN_USE));
+            Server.processSendClientMessage(client, buildSimpleErrorMessage(ErrorEnum.NAME_ALREADY_IN_USE));
             return;
         }
 
@@ -129,7 +114,7 @@ public class CommandsValidator {
 
     private static void processSendMessageCommand(Client client, String[] args) {
         if (args.length < 2 || args[0].isEmpty() || args[1].isEmpty()) {
-            Server.processSendClientMessage(client, buildErrorMessage(INVALID_MESSAGE));
+            Server.processSendClientMessage(client, buildErrorMessage(ErrorEnum.INVALID_MESSAGE));
             return;
         }
 
@@ -142,7 +127,7 @@ public class CommandsValidator {
             .orElse(null);
 
         if (recipient == null || client.getName().equalsIgnoreCase(userName)) {
-            Server.processSendClientMessage(client, buildErrorMessage(USER_NOT_FOUND));
+            Server.processSendClientMessage(client, buildErrorMessage(ErrorEnum.USER_NOT_FOUND));
             return;
         }
 
@@ -153,7 +138,7 @@ public class CommandsValidator {
 
     private static void processSendFileCommand(Client client, String[] args) {
         if (args.length < 2 || args[1].isEmpty()) {
-            Server.processSendClientMessage(client, buildErrorMessage(INVALID_NAME));
+            Server.processSendClientMessage(client, buildErrorMessage(ErrorEnum.INVALID_NAME));
             return;
         }
 
@@ -168,12 +153,24 @@ public class CommandsValidator {
             .orElse(null);
 
         if (targetClient == null) {
-            Server.processSendClientMessage(client, buildErrorMessage(USER_NOT_FOUND));
+            Server.processSendClientMessage(client, buildErrorMessage(ErrorEnum.USER_NOT_FOUND));
             return;
         }
 
         try {
-            DataInputStream dataIn = new DataInputStream(client.getSocket().getInputStream());
+            InputStream inputStream = client.getSocket().getInputStream();
+            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+            DataInputStream dataIn = new DataInputStream(inputStream);
+
+            if (bufferedReader.ready()) {
+                String possibleError = bufferedReader.readLine();
+
+                if (MessageType.ERROR.name().equals(possibleError)) {
+                    System.out.println("Ocorreu um erro no envio do arquivo.");
+                    Server.processSendClientMessage(client, buildSimpleErrorMessage(ErrorEnum.SEND_FILE_ERROR, targetName));
+                    return;
+                }
+            }
 
             long fileSize = dataIn.readLong();
 
@@ -210,7 +207,7 @@ public class CommandsValidator {
             Message fileReceivedMessage = new Message(MessageType.FILE, client.getName(), "Arquivo recebido: " + filepath.getFileName().toString());
             Server.processSendClientMessage(targetClient, fileReceivedMessage);
         } catch (IOException e) {
-            Server.processSendClientMessage(client, buildErrorMessage(String.format(SEND_FILE_ERROR, targetName)));
+            Server.processSendClientMessage(client, buildSimpleErrorMessage(ErrorEnum.SEND_FILE_ERROR, targetName));
             System.out.println("Erro ao enviar arquivo para " + targetName + ", Erro: " + e.getMessage());
         }
     }
