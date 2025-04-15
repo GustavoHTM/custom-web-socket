@@ -98,7 +98,7 @@ public class IOCommunication {
                 System.out.printf("Enviando: %s - Progresso: %.2f%%\n", fileToSend.getName(), progress);
             }
         } catch (Exception exception) {
-            System.out.println("ERRO");
+            System.out.println("ERRO " + exception);
             output.println(MessageType.ERROR);
         } finally {
             try {
