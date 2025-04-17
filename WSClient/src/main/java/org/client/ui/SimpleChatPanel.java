@@ -16,6 +16,8 @@ import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
@@ -28,6 +30,7 @@ import org.communication.CommandEnum;
 import org.communication.FileUtils;
 import org.communication.IOCommunication;
 import org.communication.Message;
+import org.communication.MessageType;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
@@ -298,10 +301,21 @@ public class SimpleChatPanel extends JFrame {
             int result = folderChooser.showOpenDialog(SimpleChatPanel.this);
             if (result == JFileChooser.APPROVE_OPTION) {
                 File selectedFile = folderChooser.getSelectedFile();
-                String path = selectedFile.getAbsolutePath();
+                Path path = Paths.get(selectedFile.getAbsolutePath());
 
-                String command = CommandEnum.generateCommand(CommandEnum.DOWNLOAD_FILE, from, filename, path);
-                inputField.setText(command);
+                String command = CommandEnum.generateCommand(CommandEnum.DOWNLOAD_FILE, from, filename);
+                ioCommunication.sendMessage(output, MessageType.MESSAGE, command);
+
+                try {
+                    if (ioCommunication.receiveFile(Client.server.getInputStream(), path, filename) != null) {
+                        Message successMessage = new Message(MessageType.MESSAGE, "SERVER", "Arquivo baixado com sucesso!");
+                        receiveMessage(successMessage);
+                    }
+                } catch (Exception exception) {
+                    System.out.println("Erro ao baixar arquivo, erro: " + exception.getMessage() + "\n\n" + exception);
+                    Message errorMessage = new Message(MessageType.ERROR, "SERVER", "Erro ao baixar o arquivo");
+                    receiveMessage(errorMessage);
+                }
             }
         });
 
