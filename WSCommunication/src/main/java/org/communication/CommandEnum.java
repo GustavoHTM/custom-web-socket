@@ -11,7 +11,7 @@ public enum CommandEnum {
     CHOOSE_NAME("/choose-name", List.of("<your-name>")),
     SEND_MESSAGE("/send-message", List.of("<user-name>", "<message>")),
     SEND_FILE("/send-file", List.of("<user-name>", "<file-path>")),
-    DOWNLOAD_FILE("/download-file", List.of("<user-name>", "<filename>", "<download-path>")),
+    DOWNLOAD_FILE("/download-file", List.of("<user-name>", "<filename>")),
     EXIT("/exit", List.of("")),
 
     // Client side exclusive

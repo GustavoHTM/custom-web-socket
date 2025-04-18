@@ -1,14 +1,6 @@
 package org.server;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -22,7 +14,7 @@ import org.communication.MessageType;
 
 public class CommandsValidator {
 
-    private static final String SERVER_MESSAGE_IDENTIFIER = "SERVER";
+    public static final String SERVER_MESSAGE_IDENTIFIER = "SERVER";
 
     private static final String FILES_DIRECTORY = FileUtils.getTempPath() + File.separator + "socket_files";
 
@@ -55,6 +47,9 @@ public class CommandsValidator {
                 break;
             case SEND_FILE:
                 processSendFileCommand(client, commandArgs);
+                break;
+            case DOWNLOAD_FILE:
+                processDownloadFileCommand(client, commandArgs);
                 break;
             case EXIT:
                 processExitCommand(client);
@@ -157,48 +152,11 @@ public class CommandsValidator {
             return;
         }
 
+        Path receivePath = Paths.get(FILES_DIRECTORY, targetName);
+
         try {
-            InputStream inputStream = client.getSocket().getInputStream();
-            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-            DataInputStream dataIn = new DataInputStream(inputStream);
-
-            if (bufferedReader.ready()) {
-                String possibleError = bufferedReader.readLine();
-
-                if (MessageType.ERROR.name().equals(possibleError)) {
-                    System.out.println("Ocorreu um erro no envio do arquivo.");
-                    Server.processSendClientMessage(client, buildSimpleErrorMessage(ErrorEnum.SEND_FILE_ERROR, targetName));
-                    return;
-                }
-            }
-
-            long fileSize = dataIn.readLong();
-
-            byte[] buffer = new byte[4096];
-            int bytesRead;
-            long totalRead = 0;
-
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-
-            while (totalRead < fileSize && (bytesRead = dataIn.read(buffer, 0, (int)Math.min(buffer.length, fileSize - totalRead))) != -1) {
-                baos.write(buffer, 0, bytesRead);
-                totalRead += bytesRead;
-            }
-
-            byte[] fileData = baos.toByteArray();
-
-            Path fileDirectory = Paths.get(FILES_DIRECTORY, targetName, client.getName());
-            if (Files.notExists(fileDirectory)) {
-                Files.createDirectories(fileDirectory);
-            }
-
-            Path newFilepath = Paths.get(fileDirectory.toString(), filepath.getFileName().toString());
-
-            try (FileOutputStream fileOutputStream = new FileOutputStream(newFilepath.toString())) {
-                fileOutputStream.write(fileData);
-                System.out.println("Arquivo criado com sucesso em " + newFilepath);
-            } catch (IOException e) {
-                System.err.println("Erro ao criar arquivo " + newFilepath + ": " + e.getMessage());
+            if (Server.ioCommunication.receiveFile(client.getSocket().getInputStream(), receivePath, filepath.getFileName().toString()) == null) {
+                Server.processSendClientMessage(client, buildSimpleErrorMessage(ErrorEnum.SEND_FILE_ERROR, targetName));
             }
 
             Message successfulFileSentMessage = new Message(MessageType.MESSAGE, SERVER_MESSAGE_IDENTIFIER, "Arquivo enviado com sucesso para " + targetName);
@@ -206,9 +164,29 @@ public class CommandsValidator {
 
             Message fileReceivedMessage = new Message(MessageType.FILE, client.getName(), "Arquivo recebido: " + filepath.getFileName().toString());
             Server.processSendClientMessage(targetClient, fileReceivedMessage);
-        } catch (IOException e) {
+        } catch (Exception e) {
             Server.processSendClientMessage(client, buildSimpleErrorMessage(ErrorEnum.SEND_FILE_ERROR, targetName));
-            System.out.println("Erro ao enviar arquivo para " + targetName + ", Erro: " + e.getMessage());
+        }
+    }
+
+    private static void processDownloadFileCommand(Client client, String[] args) {
+        if (args.length < 2 || args[1].isEmpty()) {
+            Server.processSendClientMessage(client, buildErrorMessage(ErrorEnum.INVALID_NAME));
+            return;
+        }
+
+        String fileName = args[1].trim();
+        Path filePath = Paths.get(FILES_DIRECTORY, client.getName(), fileName);
+
+        if (!filePath.toFile().exists()) {
+            Server.processSendClientMessage(client, buildSimpleErrorMessage(ErrorEnum.FILE_NOT_FOUND));
+            return;
+        }
+
+        try {
+            Server.ioCommunication.sendFile(client.getOutput(), filePath.toString());
+        } catch (Exception e) {
+            Server.processSendClientMessage(client, buildSimpleErrorMessage(ErrorEnum.SEND_FILE_ERROR, fileName));
         }
     }
 
