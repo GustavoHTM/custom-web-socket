@@ -290,13 +290,10 @@ public class SimpleChatPanel extends JFrame {
         downloadFileButton.setText("Baixar arquivo");
 
         downloadFileButton.addActionListener((ActionEvent e) -> {
-            String downloadDirectoryPath = FileUtils.getDownloadsPath();
-
             JFileChooser folderChooser = new JFileChooser();
             folderChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
             folderChooser.setDialogTitle("Selecione a pasta de destino");
             folderChooser.setAcceptAllFileFilterUsed(false);
-            folderChooser.setCurrentDirectory(new File(downloadDirectoryPath));
 
             int result = folderChooser.showOpenDialog(SimpleChatPanel.this);
             if (result == JFileChooser.APPROVE_OPTION) {

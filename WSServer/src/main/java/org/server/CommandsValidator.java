@@ -48,6 +48,9 @@ public class CommandsValidator {
             case SEND_FILE:
                 processSendFileCommand(client, commandArgs);
                 break;
+            case DOWNLOAD_FILE:
+                processDownloadFileCommand(client, commandArgs);
+                break;
             case EXIT:
                 processExitCommand(client);
                 break;
@@ -155,8 +158,35 @@ public class CommandsValidator {
             if (Server.ioCommunication.receiveFile(client.getSocket().getInputStream(), receivePath, filepath.getFileName().toString()) == null) {
                 Server.processSendClientMessage(client, buildSimpleErrorMessage(ErrorEnum.SEND_FILE_ERROR, targetName));
             }
+
+            Message successfulFileSentMessage = new Message(MessageType.MESSAGE, SERVER_MESSAGE_IDENTIFIER, "Arquivo enviado com sucesso para " + targetName);
+            Server.processSendClientMessage(client, successfulFileSentMessage);
+
+            Message fileReceivedMessage = new Message(MessageType.FILE, client.getName(), "Arquivo recebido: " + filepath.getFileName().toString());
+            Server.processSendClientMessage(targetClient, fileReceivedMessage);
         } catch (Exception e) {
             Server.processSendClientMessage(client, buildSimpleErrorMessage(ErrorEnum.SEND_FILE_ERROR, targetName));
+        }
+    }
+
+    private static void processDownloadFileCommand(Client client, String[] args) {
+        if (args.length < 2 || args[1].isEmpty()) {
+            Server.processSendClientMessage(client, buildErrorMessage(ErrorEnum.INVALID_NAME));
+            return;
+        }
+
+        String fileName = args[1].trim();
+        Path filePath = Paths.get(FILES_DIRECTORY, client.getName(), fileName);
+
+        if (!filePath.toFile().exists()) {
+            Server.processSendClientMessage(client, buildSimpleErrorMessage(ErrorEnum.FILE_NOT_FOUND));
+            return;
+        }
+
+        try {
+            Server.ioCommunication.sendFile(client.getOutput(), filePath.toString());
+        } catch (Exception e) {
+            Server.processSendClientMessage(client, buildSimpleErrorMessage(ErrorEnum.SEND_FILE_ERROR, fileName));
         }
     }
 
