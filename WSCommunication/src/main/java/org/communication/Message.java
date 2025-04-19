@@ -1,5 +1,7 @@
 package org.communication;
 
+import org.communication.enums.MessageType;
+
 import lombok.Getter;
 
 @Getter
@@ -8,16 +10,22 @@ public class Message {
     public static final String END_MESSAGE = "<END>";
     public static final String NEW_LINE = "\n";
 
-    private String from;
+    private final String from;
 
-    private String content;
+    private final String content;
 
-    private MessageType type;
+    private final MessageType type;
 
-    public Message(MessageType type, String from, String content) {
+    public Message(String from, String content) {
+        this.type = MessageType.MESSAGE;
         this.from = from;
         this.content = content;
+    }
+
+    public Message(MessageType type, String from, String content) {
         this.type = type;
+        this.from = from;
+        this.content = content;
     }
 
     @Override
