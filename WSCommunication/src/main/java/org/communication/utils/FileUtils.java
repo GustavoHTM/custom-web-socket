@@ -1,4 +1,4 @@
-package org.communication;
+package org.communication.utils;
 
 import java.io.File;
 import java.nio.file.Files;

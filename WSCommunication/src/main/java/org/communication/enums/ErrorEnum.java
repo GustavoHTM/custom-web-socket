@@ -1,9 +1,10 @@
-package org.communication;
+package org.communication.enums;
 
 import lombok.Getter;
 
 @Getter
 public enum ErrorEnum {
+
     INVALID_COMMAND("Comando inválido.", 100),
     INVALID_NAME("Nome inválido.", 101),
     INVALID_MESSAGE("Mensagem inválida.", 102),
