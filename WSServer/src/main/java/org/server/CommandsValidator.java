@@ -3,14 +3,14 @@ package org.server;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.stream.Collectors;
 
-import org.communication.CommandEnum;
-import org.communication.ErrorEnum;
-import org.communication.FileUtils;
 import org.communication.Message;
-import org.communication.MessageType;
+import org.communication.enums.CommandEnum;
+import org.communication.enums.ErrorEnum;
+import org.communication.enums.MessageType;
+import org.communication.utils.FileUtils;
 
 public class CommandsValidator {
 
@@ -18,49 +18,44 @@ public class CommandsValidator {
 
     private static final String FILES_DIRECTORY = FileUtils.getTempPath() + File.separator + "socket_files";
 
-    static void processAndValidateCommand(Client client, String messageContent) {
-        String[] args = messageContent.trim().split(" ");
-        if (args.length < 1) {
-            Server.processSendClientMessage(client, buildErrorMessage(ErrorEnum.INVALID_COMMAND));
-            return;
-        }
-
-        String command = args[0].trim();
-        CommandEnum commandEnum = CommandEnum.convert(command);
-
+    static void validateAndProcessCommand(Client client, Message message) {
+        CommandEnum commandEnum = CommandEnum.convert(message.getContent());
         if (commandEnum == null) {
-            Server.processSendClientMessage(client, buildErrorMessage(ErrorEnum.INVALID_COMMAND));
+            client.receiveMessage(buildErrorMessage(ErrorEnum.INVALID_COMMAND));
             return;
         }
 
-        String[] commandArgs = Arrays.copyOfRange(args, 1, args.length);
-
-        switch (commandEnum) {
-            case USERS:
-                processShowUsersCommand(client);
-                break;
-            case CHOOSE_NAME:
-                processChooseNameCommand(client, commandArgs);
-                break;
-            case SEND_MESSAGE:
-                processSendMessageCommand(client, commandArgs);
-                break;
-            case SEND_FILE:
-                processSendFileCommand(client, commandArgs);
-                break;
-            case DOWNLOAD_FILE:
-                processDownloadFileCommand(client, commandArgs);
-                break;
-            case EXIT:
-                processExitCommand(client);
-                break;
+        LinkedList<String> arguments = commandEnum.getArgumentValues();
+        try {
+            switch (commandEnum) {
+                case USERS:
+                    processShowUsersCommand(client);
+                    break;
+                case CHOOSE_NAME:
+                    processChooseNameCommand(client, arguments);
+                    break;
+                case SEND_MESSAGE:
+                    processSendMessageCommand(client, arguments);
+                    break;
+                case SEND_FILE:
+                    processSendFileCommand(client, arguments);
+                    break;
+                case DOWNLOAD_FILE:
+                    processDownloadFileCommand(client, arguments);
+                    break;
+                case EXIT:
+                    processExitCommand(client);
+                    break;
+            }
+        } catch (Exception exception) {
+            System.out.println("processAndValidateCommand >> Erro ao processar comando: " + exception);
         }
     }
 
     public static String buildAvailableCommands() {
         return "Comandos disponíveis:\n" + CommandEnum.listUserCommands()
             .stream()
-            .map(CommandEnum::getCommandHelp)
+            .map(CommandEnum::toString)
             .collect(Collectors.joining("\n"));
     }
 
@@ -78,131 +73,176 @@ public class CommandsValidator {
 
     private static void processShowUsersCommand(Client client) {
         StringBuilder users = new StringBuilder("Usuários conectados:\n");
-        for (Client c : Server.clientList) {
+        for (Client c : Server.CLIENT_LIST) {
             users.append(c.getName()).append("\n");
         }
 
-        Message message = new Message(MessageType.MESSAGE, SERVER_MESSAGE_IDENTIFIER, users.toString());
-        Server.processSendClientMessage(client, message);
+        Message message = new Message(SERVER_MESSAGE_IDENTIFIER, users.toString());
+        client.receiveMessage(message);
     }
 
-    private static void processChooseNameCommand(Client client, String[] args) {
-        if (args.length < 1 || args[0].isEmpty()) {
-            Server.processSendClientMessage(client, buildSimpleErrorMessage(ErrorEnum.INVALID_NAME));
+    private static void processChooseNameCommand(Client client, LinkedList<String> arguments) {
+        if (!isValidChooseName(arguments)) {
+            client.receiveMessage(buildSimpleErrorMessage(ErrorEnum.INVALID_NAME));
+        }
+
+        String newName = String.join(" ", arguments);
+        if (!isValidNewName(client.getName(), newName)) {
+            client.receiveMessage(buildSimpleErrorMessage(ErrorEnum.NAME_ALREADY_IN_USE));
             return;
         }
 
-        String name = Arrays.asList(args).subList(0, args.length).stream().reduce((a, b) -> a + " " + b).orElse("");
+        client.setName(newName);
 
-        if (Server.clientList.stream().anyMatch(c -> c.getName().equalsIgnoreCase(name) && !client.getName().equalsIgnoreCase(name))) {
-            Server.processSendClientMessage(client, buildSimpleErrorMessage(ErrorEnum.NAME_ALREADY_IN_USE));
-            return;
-        }
-
-        client.setName(name);
-
-        String messageContent = "Olá " + name + "\n\n" + buildAvailableCommands();
-        Message message = new Message(MessageType.MESSAGE, SERVER_MESSAGE_IDENTIFIER, messageContent);
-
-        Server.processSendClientMessage(client, message);
+        String message = "Olá " + newName + "\n\n" + buildAvailableCommands();
+        client.receiveMessage(SERVER_MESSAGE_IDENTIFIER, message);
     }
 
-    private static void processSendMessageCommand(Client client, String[] args) {
-        if (args.length < 2 || args[0].isEmpty() || args[1].isEmpty()) {
-            Server.processSendClientMessage(client, buildErrorMessage(ErrorEnum.INVALID_MESSAGE));
-            return;
-        }
-
-        String userName = args[0];
-        String messageContent = Arrays.asList(args).subList(1, args.length).stream().reduce((a, b) -> a + " " + b).orElse("");
-
-        Client recipient = Server.clientList.stream()
-            .filter(c -> c.getName().equalsIgnoreCase(userName))
-            .findFirst()
-            .orElse(null);
-
-        if (recipient == null || client.getName().equalsIgnoreCase(userName)) {
-            Server.processSendClientMessage(client, buildErrorMessage(ErrorEnum.USER_NOT_FOUND));
-            return;
-        }
-
-        Message message = new Message(MessageType.MESSAGE, client.getName(), messageContent);
-
-        Server.processSendClientMessage(recipient, message);
+    private static boolean isValidChooseName(LinkedList<String> arguments) {
+        if (arguments.isEmpty()) return false;
+        return !arguments.getFirst().isEmpty();
     }
 
-    private static void processSendFileCommand(Client client, String[] args) {
-        if (args.length < 2 || args[1].isEmpty()) {
-            Server.processSendClientMessage(client, buildErrorMessage(ErrorEnum.INVALID_NAME));
+    private static boolean isValidNewName(String currentName, String newName) {
+        if (currentName.equalsIgnoreCase(newName)) {
+            return false;
+        }
+
+        return Server.findClient(newName) == null;
+    }
+
+    private static void processSendMessageCommand(Client sender, LinkedList<String> arguments) {
+        if (!isValidSendMessage(arguments)) {
+            sender.receiveMessage(buildErrorMessage(ErrorEnum.INVALID_MESSAGE));
             return;
         }
 
-        String targetName = args[0].trim();
-
-        String[] subArray = Arrays.copyOfRange(args, 1, args.length);
-        Path filepath = Paths.get(String.join(" ", subArray));
-
-        Client targetClient = Server.clientList.stream()
-            .filter(c -> c.getName().equalsIgnoreCase(targetName))
-            .findFirst()
-            .orElse(null);
-
-        if (targetClient == null) {
-            Server.processSendClientMessage(client, buildErrorMessage(ErrorEnum.USER_NOT_FOUND));
+        String receiverName = arguments.removeFirst();
+        if (sender.getName().equalsIgnoreCase(receiverName)) {
+            sender.receiveMessage(buildErrorMessage(ErrorEnum.USER_NOT_FOUND));
             return;
         }
 
-        Path receivePath = Paths.get(FILES_DIRECTORY, targetName);
+        Client receiver = Server.findClient(receiverName);
+        if (receiver == null) {
+            sender.receiveMessage(buildErrorMessage(ErrorEnum.USER_NOT_FOUND));
+            return;
+        }
+
+        String message = String.join(" ", arguments);
+        receiver.receiveMessage(sender.getName(), message);
+    }
+
+    private static boolean isValidSendMessage(LinkedList<String> arguments) {
+        if (arguments.size() < CommandEnum.SEND_MESSAGE.getArgumentNames().size()) {
+            return false;
+        }
+
+        String receiverName = arguments.getFirst();
+        if (receiverName.isEmpty()) {
+            return false;
+        }
+
+        String messageStart = arguments.get(1);
+        return !messageStart.isEmpty();
+    }
+
+    private static void processSendFileCommand(Client sender, LinkedList<String> arguments) {
+        if (!isValidSendFile(arguments)) {
+            sender.receiveMessage(buildErrorMessage(ErrorEnum.INVALID_NAME));
+            return;
+        }
+
+        String receiverName = arguments.removeFirst();
+        Client receiver = Server.findClient(receiverName);
+        if (receiver == null) {
+            sender.receiveMessage(buildErrorMessage(ErrorEnum.USER_NOT_FOUND));
+            return;
+        }
+
+        String filename = Paths.get(String.join(" ", arguments)).getFileName().toString();
+        Path path = Paths.get(FILES_DIRECTORY, receiverName, sender.getName());
 
         try {
-            if (Server.ioCommunication.receiveFile(client.getSocket().getInputStream(), receivePath, filepath.getFileName().toString()) == null) {
-                Server.processSendClientMessage(client, buildSimpleErrorMessage(ErrorEnum.SEND_FILE_ERROR, targetName));
+            if (!sender.sendFile(path)) {
+                sender.receiveMessage(buildSimpleErrorMessage(ErrorEnum.SEND_FILE_ERROR, receiverName));
             }
 
-            Message successfulFileSentMessage = new Message(MessageType.MESSAGE, SERVER_MESSAGE_IDENTIFIER, "Arquivo enviado com sucesso para " + targetName);
-            Server.processSendClientMessage(client, successfulFileSentMessage);
+            Message successfulFileSentMessage = new Message(SERVER_MESSAGE_IDENTIFIER, "Arquivo enviado com sucesso para " + receiverName);
+            sender.receiveMessage(successfulFileSentMessage);
 
-            Message fileReceivedMessage = new Message(MessageType.FILE, client.getName(), "Arquivo recebido: " + filepath.getFileName().toString());
-            Server.processSendClientMessage(targetClient, fileReceivedMessage);
-        } catch (Exception e) {
-            Server.processSendClientMessage(client, buildSimpleErrorMessage(ErrorEnum.SEND_FILE_ERROR, targetName));
+            Message fileReceivedMessage = new Message(MessageType.SEND_FILE, sender.getName(), "Arquivo recebido: " + filename);
+            receiver.receiveMessage(fileReceivedMessage);
+        } catch (Exception exception) {
+            System.out.println("Ocorreu um erro ao salvar arquivo no servidor: " + exception);
+            sender.receiveMessage(buildSimpleErrorMessage(ErrorEnum.SEND_FILE_ERROR, receiverName));
         }
     }
 
-    private static void processDownloadFileCommand(Client client, String[] args) {
-        if (args.length < 2 || args[1].isEmpty()) {
-            Server.processSendClientMessage(client, buildErrorMessage(ErrorEnum.INVALID_NAME));
+    private static boolean isValidSendFile(LinkedList<String> arguments) {
+        if (arguments.size() < CommandEnum.SEND_FILE.getArgumentNames().size()) {
+            return false;
+        }
+
+        String receiverName = arguments.getFirst();
+        if (receiverName.isEmpty()) {
+            return false;
+        }
+
+        String filenameStart = arguments.get(1);
+        return !filenameStart.isEmpty();
+    }
+
+    private static void processDownloadFileCommand(Client receiver, LinkedList<String> arguments) {
+        if (!isValidDownloadFile(arguments)) {
+            receiver.receiveMessage(buildErrorMessage(ErrorEnum.INVALID_NAME));
             return;
         }
 
-        String fileName = args[1].trim();
-        Path filePath = Paths.get(FILES_DIRECTORY, client.getName(), fileName);
-
-        if (!filePath.toFile().exists()) {
-            Server.processSendClientMessage(client, buildSimpleErrorMessage(ErrorEnum.FILE_NOT_FOUND));
+        String senderName = arguments.removeFirst();
+        Client sender = Server.findClient(senderName);
+        if (sender == null) {
+            receiver.receiveMessage(buildErrorMessage(ErrorEnum.USER_NOT_FOUND));
             return;
         }
 
-        try {
-            Server.ioCommunication.sendFile(client.getOutput(), filePath.toString());
-        } catch (Exception e) {
-            Server.processSendClientMessage(client, buildSimpleErrorMessage(ErrorEnum.SEND_FILE_ERROR, fileName));
+        String filename = String.join(" ", arguments);
+        Path filepath = Paths.get(FILES_DIRECTORY, receiver.getName(), senderName, filename);
+
+        if (!filepath.toFile().exists()) {
+            sender.receiveMessage(buildSimpleErrorMessage(ErrorEnum.FILE_NOT_FOUND));
+            return;
         }
+
+        Message receiveingFileMessage = new Message(MessageType.RECEIVE_FILE, SERVER_MESSAGE_IDENTIFIER, "");
+        receiver.receiveFile(receiveingFileMessage, filepath.toString());
+    }
+
+    private static boolean isValidDownloadFile(LinkedList<String> arguments) {
+        if (arguments.size() < CommandEnum.DOWNLOAD_FILE.getArgumentNames().size()) {
+            return false;
+        }
+
+        String senderName = arguments.getFirst();
+        if (senderName.isEmpty()) {
+            return false;
+        }
+
+        String filenameStart = arguments.get(1);
+        return !filenameStart.isEmpty();
     }
 
     private static void processExitCommand(Client client) {
         try {
-            String messageContent = "Conexão encerrada.";
-            Message message = new Message(MessageType.MESSAGE, SERVER_MESSAGE_IDENTIFIER, messageContent);
-
-            Server.processSendClientMessage(client, message);
-            client.getSocket().close();
+            client.receiveMessage(SERVER_MESSAGE_IDENTIFIER, "Conexão encerrada.");
+            client.close();
 
             System.out.println("Cliente de ip " + client.getIp() + " desconectado.");
-        } catch (Exception e) {
-            System.out.println("Erro ao fechar a conexão com o cliente de ip " + client.getIp() + ", Erro: " + e.getMessage());
+        } catch (Exception exception) {
+            System.out.println("Erro ao fechar a conexão com o cliente de ip " + client.getIp() + ", Erro: " + exception);
         } finally {
-            Server.clientList.remove(client);
+            Server.removeClient(client);
         }
     }
+
 }
