@@ -2,6 +2,8 @@ package org.communication;
 
 import java.util.Scanner;
 
+import org.communication.enums.MessageType;
+
 public class MessageBuilder {
 
     public static Message buildMessage(Scanner scanner) {
