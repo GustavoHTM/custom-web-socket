@@ -1,4 +1,4 @@
-package org.communication;
+package org.communication.enums;
 
 import java.util.Arrays;
 
@@ -9,9 +9,9 @@ public enum MessageType {
 
     MESSAGE("<MESSAGE>"),
     ERROR("<ERROR>"),
-    FILE("<FILE>");
+    SEND_FILE("<SEND_FILE>"),
+    RECEIVE_FILE("<RECEIVE_FILE>");
 
-    @Getter
     private final String code;
 
     private MessageType(String code) {
@@ -22,13 +22,17 @@ public enum MessageType {
         return this == ERROR;
     }
 
-    public boolean isFile() {
-        return this == FILE;
+    public boolean isSendFile() {
+        return this == SEND_FILE;
+    }
+
+    public boolean isReceivedFile() {
+        return this == RECEIVE_FILE;
     }
 
     public static MessageType convert(String code) {
         return Arrays.stream(MessageType.values())
-            .filter(messageType -> messageType.code.equals(code) )
+            .filter(messageType -> messageType.code.equals(code))
             .findFirst()
             .orElse(null);
     }
