@@ -74,35 +74,44 @@ public class IOCommunication {
         this.output.println(message);
     }
 
-    public void sendFile(PrintStream output, String filePath) {
+    public void sendFile(String filepath) {
         DataOutputStream dataOutputStream;
         FileInputStream fileInputStream = null;
 
         try {
-            File fileToSend = new File(filePath);
+            File fileToSend = new File(filepath);
 
-            if (!fileToSend.exists()) {
-                fileToSend.createNewFile();
+            if (!fileToSend.exists() && !fileToSend.createNewFile()) {
+                System.out.println("sendFile >> Não foi possível encontrar ou criar o arquivo");
+                return;
             }
 
-            dataOutputStream = new DataOutputStream(output);
-            fileInputStream = new FileInputStream(fileToSend);
+            dataOutputStream = new DataOutputStream(this.output);
+            dataOutputStream.writeUTF(fileToSend.getName());
             dataOutputStream.writeLong(fileToSend.length());
 
+            fileInputStream = new FileInputStream(fileToSend);
             byte[] buffer = new byte[4096];
             int bytesRead;
             long totalBytesSent = 0;
 
             while ((bytesRead = fileInputStream.read(buffer)) != -1) {
-                output.write(buffer, 0, bytesRead);
+                dataOutputStream.write(buffer, 0, bytesRead);
                 totalBytesSent += bytesRead;
 
                 double progress = (double) totalBytesSent / fileToSend.length() * 100;
-                System.out.printf("Enviando: %s - Progresso: %.2f%%\n", fileToSend.getName(), progress);
+                System.out.printf("sendFile > Enviando: %s - Progresso: %.2f%%\n", fileToSend.getName(), progress);
             }
+
+            dataOutputStream.flush();
+            System.out.println("sendFile >> Envio concluído!");
+
         } catch (Exception exception) {
-            System.out.println("ERRO " + exception);
-            output.println(MessageType.ERROR);
+            System.out.println("sendFile > ERRO: " + exception);
+            try {
+                new DataOutputStream(this.output).writeUTF(MessageType.ERROR.getCode());
+            } catch (IOException ignored) {
+            }
         } finally {
             try {
                 if (fileInputStream != null) {
@@ -113,18 +122,15 @@ public class IOCommunication {
         }
     }
 
-    public byte[] receiveFile(InputStream inputStream, Path receivePath, String filename) {
+    public boolean receiveFile(Path receivePath) {
         try {
-            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-            DataInputStream dataIn = new DataInputStream(inputStream);
+            DataInputStream dataIn = new DataInputStream(this.inputStream);
 
-            if (bufferedReader.ready()) {
-                String possibleError = bufferedReader.readLine();
+            String possibleErrorOrFilename = dataIn.readUTF();
 
-                if (MessageType.ERROR.name().equals(possibleError)) {
-                    System.out.println("Ocorreu um erro no recebimento do arquivo.");
-                    return null;
-                }
+            if (MessageType.ERROR.getCode().equals(possibleErrorOrFilename)) {
+                System.out.println("receiveFile > Ocorreu um erro no recebimento do arquivo.");
+                return false;
             }
 
             long fileSize = dataIn.readLong();
@@ -135,7 +141,7 @@ public class IOCommunication {
 
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
-            while (totalRead < fileSize && (bytesRead = dataIn.read(buffer, 0, (int)Math.min(buffer.length, fileSize - totalRead))) != -1) {
+            while (totalRead < fileSize && (bytesRead = dataIn.read(buffer, 0, (int) Math.min(buffer.length, fileSize - totalRead))) != -1) {
                 baos.write(buffer, 0, bytesRead);
                 totalRead += bytesRead;
             }
@@ -146,17 +152,14 @@ public class IOCommunication {
                 Files.createDirectories(receivePath);
             }
 
-            Path newFilepath = Paths.get(receivePath.toString(), filename);
+            Path newFilepath = receivePath.resolve(possibleErrorOrFilename);
+            Files.write(newFilepath, fileData);
 
-            FileOutputStream fileOutputStream = new FileOutputStream(newFilepath.toString());
-            fileOutputStream.write(fileData);
-            fileOutputStream.close();
-            System.out.println("Arquivo criado com sucesso!");
-
-            return fileData;
-        } catch (IOException e) {
-            System.out.println("Erro ao enviar arquivo, Erro: " + e.getMessage());
-            return null;
+            System.out.println("receiveFile > Arquivo criado com sucesso!");
+            return true;
+        } catch (Exception exception) {
+            System.out.println("receiveFile > Erro ao receber arquivo: " + exception);
+            return false;
         }
     }
 
