@@ -14,8 +14,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
-import java.io.IOException;
-import java.io.PrintStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
@@ -26,11 +24,9 @@ import java.util.OptionalInt;
 import java.util.concurrent.Executors;
 
 import org.client.Client;
-import org.communication.CommandEnum;
-import org.communication.FileUtils;
-import org.communication.IOCommunication;
 import org.communication.Message;
-import org.communication.MessageType;
+import org.communication.enums.CommandEnum;
+import org.communication.utils.FileUtils;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
@@ -47,19 +43,26 @@ import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.border.Border;
+import lombok.Synchronized;
 
 public class SimpleChatPanel extends JFrame {
-    private final JPanel chatPanel;
-    private final JTextArea inputField;
-    private final PrintStream output;
-    private final JScrollPane scrollPane;
-    private final IOCommunication ioCommunication;
 
     private static final Font FONT = new Font("Consolas", Font.PLAIN, 17);
 
-    public SimpleChatPanel(String name, PrintStream output) {
-        this.output = output;
-        setTitle("Simple Chat - " + name);
+    private final JPanel chatPanel;
+
+    private final JTextArea inputField;
+
+    private final JScrollPane scrollPane;
+
+    private final Client client;
+
+    private Path receiveFilesPath = Paths.get(FileUtils.getDownloadsPath());
+
+    public SimpleChatPanel(Client client) {
+        this.client = client;
+
+        setTitle("Simple Chat - " + client.getName());
         setSize(400, 900);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
@@ -102,7 +105,7 @@ public class SimpleChatPanel extends JFrame {
                 File selectedFile = fileChooser.getSelectedFile();
                 String path = selectedFile.getAbsolutePath();
 
-                String command = CommandEnum.generateCommand(CommandEnum.SEND_FILE, null, path);
+                String command = CommandEnum.SEND_FILE.buildCommand(null, path);
                 inputField.setText(command);
             }
         });
@@ -130,19 +133,21 @@ public class SimpleChatPanel extends JFrame {
         });
 
         inputField.setDropTarget(new DropTarget() {
-            public synchronized void drop(DropTargetDropEvent evt) {
+            @Synchronized
+            public void drop(DropTargetDropEvent evt) {
                 try {
                     evt.acceptDrop(DnDConstants.ACTION_COPY);
                     List<File> droppedFiles = (List<File>) evt.getTransferable()
                         .getTransferData(DataFlavor.javaFileListFlavor);
+
                     if (!droppedFiles.isEmpty()) {
                         File file = droppedFiles.get(0);
 
-                        String command = CommandEnum.generateCommand(CommandEnum.SEND_FILE, null, file.getAbsolutePath());
+                        String command = CommandEnum.SEND_FILE.buildCommand(null, file.getAbsolutePath());
                         inputField.setText(command);
                     }
-                } catch (Exception ex) {
-                    System.out.println("Erro ao processar arquivo: " + ex.getMessage());
+                } catch (Exception exception) {
+                    System.out.println("Erro ao processar arquivo: " + exception);
                 }
             }
         });
@@ -150,23 +155,14 @@ public class SimpleChatPanel extends JFrame {
         this.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                try {
-                    Client.closeConnection();
-                } catch (IOException ex) {
-                    throw new RuntimeException(ex);
-                }
+                client.close();
             }
         });
 
         setVisible(true);
 
-        ioCommunication = IOCommunication.getInstance(name);
         Executors.newSingleThreadExecutor().execute(() -> {
-            try {
-                ioCommunication.waitMessageReceive(Client.server.getInputStream(), this::receiveMessage);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            client.listenMessages(() -> receiveFilesPath, this::receiveMessage);
         });
     }
 
@@ -176,7 +172,7 @@ public class SimpleChatPanel extends JFrame {
 
         if (messageContent.isEmpty()) return;
 
-        if (messageContent.equals(CommandEnum.CLEAR.getCommand())) {
+        if (CommandEnum.CLEAR.getCommand().equals(messageContent)) {
             chatPanel.removeAll();
             chatPanel.revalidate();
             chatPanel.repaint();
@@ -185,14 +181,7 @@ public class SimpleChatPanel extends JFrame {
 
         appendMessage("You", messageContent, new Color(173, 255, 47), FlowLayout.RIGHT);
 
-        ioCommunication.sendMessage(output, messageContent);
-
-        if (messageContent.startsWith(CommandEnum.SEND_FILE.getCommand())) {
-            String[] parts = messageContent.split(" ");
-            String filePath = String.join(" ", Arrays.copyOfRange(parts, 2, parts.length));
-
-            ioCommunication.sendFile(output, filePath);
-        }
+        client.sendMessage(messageContent);
     }
 
     public void receiveMessage(Message message) {
@@ -200,7 +189,7 @@ public class SimpleChatPanel extends JFrame {
             ? new Color(236, 61, 61)
             : new Color(105, 188, 255);
 
-        if (message.getType().isFile()) {
+        if (message.getType().isSendFile()) {
             appendFileMessage(message.getFrom(), message.getContent().trim(), messageColor, FlowLayout.LEFT);
             return;
         }
@@ -252,14 +241,14 @@ public class SimpleChatPanel extends JFrame {
         SwingUtilities.invokeLater(() -> scrollPane.getVerticalScrollBar().setValue(scrollPane.getVerticalScrollBar().getMaximum()));
     }
 
-    private void appendFileMessage(String from, String message, Color color, int orientation) {
+    private void appendFileMessage(String from, String messageContent, Color color, int orientation) {
         Border border = BorderFactory.createLineBorder(color.darker(), 2);
 
-        OptionalInt columns = Arrays.stream(message.split("\n"))
+        OptionalInt columns = Arrays.stream(messageContent.split("\n"))
             .mapToInt(String::length)
             .max();
 
-        JTextArea messageArea = new JTextArea(message);
+        JTextArea messageArea = new JTextArea(messageContent);
         messageArea.setLineWrap(true);
         messageArea.setWrapStyleWord(true);
         messageArea.setPreferredSize(null);
@@ -278,7 +267,7 @@ public class SimpleChatPanel extends JFrame {
 
         Icon folderIcon = UIManager.getIcon("FileView.directoryIcon");
 
-        String[] args = message.split(" ");
+        String[] args = messageContent.split(" ");
 
         String[] subArray = Arrays.copyOfRange(args, 2, args.length);
         String filename = String.join(" ", subArray);
@@ -298,21 +287,8 @@ public class SimpleChatPanel extends JFrame {
             int result = folderChooser.showOpenDialog(SimpleChatPanel.this);
             if (result == JFileChooser.APPROVE_OPTION) {
                 File selectedFile = folderChooser.getSelectedFile();
-                Path path = Paths.get(selectedFile.getAbsolutePath());
-
-                String command = CommandEnum.generateCommand(CommandEnum.DOWNLOAD_FILE, from, filename);
-                ioCommunication.sendMessage(output, MessageType.MESSAGE, command);
-
-                try {
-                    if (ioCommunication.receiveFile(Client.server.getInputStream(), path, filename) != null) {
-                        Message successMessage = new Message(MessageType.MESSAGE, "SERVER", "Arquivo baixado com sucesso!");
-                        receiveMessage(successMessage);
-                    }
-                } catch (Exception exception) {
-                    System.out.println("Erro ao baixar arquivo, erro: " + exception.getMessage() + "\n\n" + exception);
-                    Message errorMessage = new Message(MessageType.ERROR, "SERVER", "Erro ao baixar o arquivo");
-                    receiveMessage(errorMessage);
-                }
+                this.receiveFilesPath = Paths.get(selectedFile.getAbsolutePath());
+                client.receiveFile(from, filename);
             }
         });
 
