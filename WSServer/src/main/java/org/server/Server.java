@@ -1,64 +1,53 @@
 package org.server;
 
-import java.io.PrintStream;
+import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
 import java.util.concurrent.Executors;
-
-import org.communication.IOCommunication;
-import org.communication.Message;
-import org.communication.MessageBuilder;
 
 public class Server {
 
     private static final int PORT_NUMBER = 4000;
 
-    public static final List<Client> clientList = new ArrayList<>();
-    public static final IOCommunication ioCommunication = IOCommunication.getInstance(CommandsValidator.SERVER_MESSAGE_IDENTIFIER);
+    public static final List<Client> CLIENT_LIST = new ArrayList<>();
 
-    public static void main(String[] args) {
-
-        try {
-            ServerSocket server = new ServerSocket(PORT_NUMBER);
+    public static void main(String[] args) throws IOException {
+        try (ServerSocket server = new ServerSocket(PORT_NUMBER)) {
             System.out.println("Servidor rodando na porta : " + PORT_NUMBER);
 
             while (!server.isClosed()) {
-                Client client = new Client(server.accept());
-
-                clientList.add(client);
-                LogUtils.logNewConnection(client.getIp());
-
-                Executors.newSingleThreadExecutor().execute(() -> processReceiveClientMessage(client));
+                acceptNewUser(server);
             }
-        } catch (Exception e) {
-            System.out.println("Erro: " + e.getMessage() + ", Abortando servidor...");
+        } catch (Exception exception) {
+            System.out.println("Erro inesperado: " + exception + "\n finalizando servidor");
         }
     }
 
-    private static void processReceiveClientMessage(Client client) {
+    public static Client findClient(String clientName) {
+        return CLIENT_LIST.stream()
+            .filter(targetClient -> targetClient.getName().equalsIgnoreCase(clientName))
+            .findFirst()
+            .orElse(null);
+    }
+
+    public static void removeClient(Client client) {
+        CLIENT_LIST.remove(client);
+    }
+
+    private static void acceptNewUser(ServerSocket server) {
         try {
-            Scanner input = new Scanner(client.getSocket().getInputStream());
+            Client client = new Client(server.accept());
+            CLIENT_LIST.add(client);
 
-            while (input.hasNextLine()) {
-                Message message = MessageBuilder.buildMessage(input);
-                if (message == null) continue;
+            LogUtils.logNewConnection(client.getIp());
 
-                System.out.println("Messagem do cliente ip: " + client.getIp() + " recebida, lendo: " + message.toString().trim());
-                CommandsValidator.processAndValidateCommand(client, message.getContent());
-            }
-        } catch (Exception e) {
-            System.out.println("Houve um problema de conexão com o cliente de ip " + client.getIp() + ", Erro: " + e.getMessage());
+            Executors.newSingleThreadExecutor().execute(() -> {
+                client.sendMessages(CommandsValidator::validateAndProcessCommand);
+            });
+        } catch (Exception exception) {
+            System.out.println("Erro ao criar conexão com cliente: " + exception);
         }
     }
 
-    public static void processSendClientMessage(Client client, Message message) {
-        try {
-            PrintStream output = new PrintStream(client.getSocket().getOutputStream());
-            output.println(message);
-        } catch (Exception e) {
-            System.out.println("Houve um problema ao enviar mensagem para o cliente de ip " + client.getIp() + ", Erro: " + e.getMessage());
-        }
-    }
 }
