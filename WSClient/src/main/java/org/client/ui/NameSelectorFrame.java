@@ -6,9 +6,9 @@ import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.util.concurrent.Executors;
+
+import org.client.Client;
+import org.communication.Message;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -19,14 +19,9 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
-import org.client.Client;
-import org.communication.IOCommunication;
-import org.communication.Message;
-
-
 public class NameSelectorFrame extends JFrame {
 
-    public NameSelectorFrame(PrintStream output) {
+    public NameSelectorFrame(Client client) {
         setTitle("Escolha seu nome");
         setSize(350, 160);
         setLocationRelativeTo(null);
@@ -61,31 +56,13 @@ public class NameSelectorFrame extends JFrame {
                     return;
                 }
 
-                IOCommunication ioCommunication = IOCommunication.getInstance(name);
-
-                synchronized (output) {
-                    String messageContent = "/choose-name " + name;
-                    ioCommunication.sendMessage(output, messageContent);
+                Message message = client.chooseName(name);
+                if (message.getType().isError()) {
+                    errorLabel.setText(message.getContent());
+                    return;
                 }
 
-                Executors.newSingleThreadExecutor().execute(() -> {
-                    try {
-                        Message message = ioCommunication.waitSingleMessageReceive(Client.server.getInputStream());
-
-                        if (message.getType().isError()) {
-                            errorLabel.setText(message.getContent());
-                            return;
-                        }
-
-                        SwingUtilities.invokeLater(() -> {
-                            dispose();
-                            SimpleChatPanel simpleChatPanel = new SimpleChatPanel(name, output);
-                            simpleChatPanel.receiveMessage(message);
-                        });
-                    } catch (IOException ex) {
-                        SwingUtilities.invokeLater(() -> errorLabel.setText("Erro na comunicação com o servidor."));
-                    }
-                });
+                SwingUtilities.invokeLater(() -> initChat(client, message));
             }
         };
 
@@ -94,15 +71,17 @@ public class NameSelectorFrame extends JFrame {
 
         this.addWindowListener(new WindowAdapter() {
             @Override
-            public void windowClosing(WindowEvent e) {
-                try {
-                    Client.closeConnection();
-                } catch (IOException ex) {
-                    throw new RuntimeException(ex);
-                }
+            public void windowClosing(WindowEvent ignored) {
+                client.close();
             }
         });
 
         setVisible(true);
+    }
+
+    private void initChat(Client client, Message message) {
+        dispose();
+        SimpleChatPanel simpleChatPanel = new SimpleChatPanel(client);
+        simpleChatPanel.receiveMessage(message);
     }
 }
