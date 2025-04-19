@@ -164,4 +164,13 @@ public class IOCommunication {
             return null;
         }
     }
+
+    public void close() throws IOException {
+        if (this.socket.isClosed()) return;
+
+        this.output.close();
+        this.input.close();
+        this.socket.close();
+    }
+
 }
