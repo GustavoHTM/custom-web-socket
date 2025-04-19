@@ -1,82 +1,77 @@
 package org.communication;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Scanner;
 
-import org.communication.handler.MessageListener;
+import org.communication.enums.MessageType;
+import org.communication.handlers.MessageListener;
 
 import lombok.NonNull;
 
 public class IOCommunication {
 
-    private static String name;
-    private static IOCommunication instance;
+    private final Socket socket;
 
-    private IOCommunication() { }
+    private final InputStream inputStream;
 
-    public static synchronized IOCommunication getInstance(@NonNull String newName) {
-        if (instance == null) {
-            instance = new IOCommunication();
-        }
+    private final Scanner input;
 
-        name = newName;
+    private final PrintStream output;
 
-        return instance;
+    public IOCommunication(Socket socket) throws IOException {
+        this.socket = socket;
+        this.inputStream = socket.getInputStream();
+        this.input = new Scanner(this.inputStream);
+        this.output = new PrintStream(socket.getOutputStream(), true);
     }
 
-    public void waitMessageReceive(InputStream inputStream, @NonNull MessageListener messageListener) {
-        try {
-            Scanner input = new Scanner(inputStream);
-            while (input.hasNextLine()) {
+    public void waitMessageReceive(@NonNull MessageListener messageListener) {
+        while (!this.socket.isClosed() && this.input.hasNextLine()) {
+            try {
                 Message message = MessageBuilder.buildMessage(input);
 
                 if (message != null) {
+                    System.out.println(">> Recebendo mensagem:\n" + message.getContent());
                     messageListener.onMessageReceived(message);
                 }
+            } catch (Exception exception) {
+                System.out.println("waitMessageReceive >> Houve um problema de conexão com o servidor, Erro: " + exception);
             }
-        } catch (Exception exception) {
-            System.out.println("Houve um problema de conexão com o servidor, Erro: " + exception.getMessage());
         }
     }
 
-    public Message waitSingleMessageReceive(InputStream inputStream) {
+    public Message waitSingleMessageReceive() {
         try {
-            Scanner input = new Scanner(inputStream);
-            if (input.hasNextLine()) {
+            if (this.input.hasNextLine()) {
                 Message message = MessageBuilder.buildMessage(input);
-
                 if (message != null) {
+                    System.out.println(">> Recebendo mensagem:\n" + message.getContent());
                     return message;
                 }
             }
         } catch (Exception exception) {
-            System.out.println("Houve um problema de conexão com o servidor, Erro: " + exception.getMessage());
+            System.out.println("waitSingleMessageReceive >> Houve um problema de conexão com o servidor, Erro: " + exception);
         }
 
         return null;
     }
 
-    public void sendMessage(PrintStream output, String content) {
-        this.sendMessage(output, MessageType.MESSAGE, content);
+    public void sendMessage(String from, String content) {
+        sendMessage(new Message(from, content));
     }
 
-    public void sendMessage(PrintStream output, MessageType type, String content) {
-        Message message = new Message(type, name, content);
-
-        output.println(message);
+    public void sendMessage(Message message) {
+        this.output.println(message);
     }
 
     public void sendFile(PrintStream output, String filePath) {
