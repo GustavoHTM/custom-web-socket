@@ -20,8 +20,8 @@ public class LogUtils {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(LOG_FILE, true))) {
             writer.write(message);
             writer.newLine();
-        } catch (IOException e) {
-            System.err.println("Erro ao escrever no log: " + e.getMessage());
+        } catch (Exception exception) {
+            System.err.println("Erro ao escrever no log: " + exception);
         }
     }
 }
