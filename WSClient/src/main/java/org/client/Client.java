@@ -8,13 +8,16 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.client.ui.CommandLineInterface;
 import org.client.ui.NameSelectorFrame;
+import org.client.ui.SimpleChatPanel;
 import org.communication.IOCommunication;
 import org.communication.Message;
 import org.communication.enums.CommandEnum;
 import org.communication.enums.MessageType;
 import org.communication.handlers.MessageListener;
 
+import javax.naming.Name;
 import lombok.Getter;
 import lombok.NonNull;
 
@@ -48,6 +51,10 @@ public class Client {
         } catch (Exception exception) {
             System.out.println("Erro: " + exception + ", Abortando...");
         }
+    }
+
+    public void setLogged(boolean value) {
+        this.ioCommunication.setLogged(value);
     }
 
     public Message chooseName(String name) {

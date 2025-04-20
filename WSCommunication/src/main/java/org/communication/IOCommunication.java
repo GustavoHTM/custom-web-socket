@@ -17,6 +17,7 @@ import org.communication.enums.MessageType;
 import org.communication.handlers.MessageListener;
 
 import lombok.NonNull;
+import lombok.Setter;
 
 public class IOCommunication {
 
@@ -27,6 +28,9 @@ public class IOCommunication {
     private final Scanner input;
 
     private final PrintStream output;
+
+    @Setter
+    private boolean logged = true;
 
     public IOCommunication(Socket socket) throws IOException {
         this.socket = socket;
@@ -41,11 +45,11 @@ public class IOCommunication {
                 Message message = MessageBuilder.buildMessage(input);
 
                 if (message != null) {
-                    System.out.println(">> Recebendo mensagem:\n" + message.getContent());
+                    log(">> Recebendo mensagem:\n" + message.getContent());
                     messageListener.onMessageReceived(message);
                 }
             } catch (Exception exception) {
-                System.out.println("waitMessageReceive >> Houve um problema de conexão com o servidor, Erro: " + exception);
+                log("waitMessageReceive >> Houve um problema de conexão com o servidor, Erro: " + exception);
             }
         }
     }
@@ -55,12 +59,12 @@ public class IOCommunication {
             if (this.input.hasNextLine()) {
                 Message message = MessageBuilder.buildMessage(input);
                 if (message != null) {
-                    System.out.println(">> Recebendo mensagem:\n" + message.getContent());
+                    log(">> Recebendo mensagem:\n" + message.getContent());
                     return message;
                 }
             }
         } catch (Exception exception) {
-            System.out.println("waitSingleMessageReceive >> Houve um problema de conexão com o servidor, Erro: " + exception);
+            log("waitSingleMessageReceive >> Houve um problema de conexão com o servidor, Erro: " + exception);
         }
 
         return null;
@@ -82,7 +86,7 @@ public class IOCommunication {
             File fileToSend = new File(filepath);
 
             if (!fileToSend.exists() && !fileToSend.createNewFile()) {
-                System.out.println("sendFile >> Não foi possível encontrar ou criar o arquivo");
+                log("sendFile >> Não foi possível encontrar ou criar o arquivo");
                 return;
             }
 
@@ -104,10 +108,10 @@ public class IOCommunication {
             }
 
             dataOutputStream.flush();
-            System.out.println("sendFile >> Envio concluído!");
+            log("sendFile >> Envio concluído!");
 
         } catch (Exception exception) {
-            System.out.println("sendFile > ERRO: " + exception);
+            log("sendFile > ERRO: " + exception);
             try {
                 new DataOutputStream(this.output).writeUTF(MessageType.ERROR.getCode());
             } catch (IOException ignored) {
@@ -129,7 +133,7 @@ public class IOCommunication {
             String possibleErrorOrFilename = dataIn.readUTF();
 
             if (MessageType.ERROR.getCode().equals(possibleErrorOrFilename)) {
-                System.out.println("receiveFile > Ocorreu um erro no recebimento do arquivo.");
+                log("receiveFile > Ocorreu um erro no recebimento do arquivo.");
                 return false;
             }
 
@@ -155,10 +159,10 @@ public class IOCommunication {
             Path newFilepath = receivePath.resolve(possibleErrorOrFilename);
             Files.write(newFilepath, fileData);
 
-            System.out.println("receiveFile > Arquivo criado com sucesso!");
+            log("receiveFile > Arquivo criado com sucesso!");
             return true;
         } catch (Exception exception) {
-            System.out.println("receiveFile > Erro ao receber arquivo: " + exception);
+            log("receiveFile > Erro ao receber arquivo: " + exception);
             return false;
         }
     }
@@ -169,6 +173,11 @@ public class IOCommunication {
         this.output.close();
         this.input.close();
         this.socket.close();
+    }
+
+    private void log(String message) {
+        if (!this.logged) return;
+        System.out.println(message);
     }
 
 }
