@@ -73,8 +73,13 @@ public class CommandsValidator {
 
     private static void processShowUsersCommand(Client client) {
         StringBuilder users = new StringBuilder("Usuários conectados:\n");
-        for (Client c : Server.CLIENT_LIST) {
-            users.append(c.getName()).append("\n");
+        for (Client user : Server.listClients()) {
+            if (user == client) {
+                users.append("Você").append("\n");
+                continue;
+            }
+
+            users.append(user.getName()).append("\n");
         }
 
         Message message = new Message(SERVER_MESSAGE_IDENTIFIER, users.toString());

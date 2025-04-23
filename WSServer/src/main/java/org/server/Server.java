@@ -31,6 +31,10 @@ public class Server {
             .orElse(null);
     }
 
+    public static List<Client> listClients() {
+        return new ArrayList<>(CLIENT_LIST);
+    }
+
     public static void removeClient(Client client) {
         CLIENT_LIST.remove(client);
     }
