@@ -14,7 +14,7 @@ import org.communication.utils.FileUtils;
 
 public class CommandsValidator {
 
-    public static final String SERVER_MESSAGE_IDENTIFIER = "SERVER";
+    public static final String SERVER_MESSAGE_IDENTIFIER = "Servidor";
 
     private static final String FILES_DIRECTORY = FileUtils.getTempPath() + File.separator + "socket_files";
 

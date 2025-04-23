@@ -91,11 +91,11 @@ public class Client {
             }
 
             if (this.ioCommunication.receiveFile(path.get())) {
-                messageListener.onMessageReceived(new Message("SERVER", "Arquivo baixado com sucesso!"));
+                messageListener.onMessageReceived(new Message("Servidor", "Arquivo baixado com sucesso!"));
                 return;
             }
 
-            messageListener.onMessageReceived(new Message(MessageType.ERROR, "SERVER", "Erro ao baixar o arquivo"));
+            messageListener.onMessageReceived(new Message(MessageType.ERROR, "Servidor", "Erro ao baixar o arquivo"));
         });
     }
 
