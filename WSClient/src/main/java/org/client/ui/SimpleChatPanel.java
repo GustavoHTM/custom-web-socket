@@ -179,7 +179,7 @@ public class SimpleChatPanel extends JFrame {
             return;
         }
 
-        appendMessage("You", messageContent, new Color(173, 255, 47), FlowLayout.RIGHT);
+        appendMessage("Você", messageContent, new Color(173, 255, 47), FlowLayout.RIGHT);
 
         client.sendMessage(messageContent);
     }
@@ -223,7 +223,7 @@ public class SimpleChatPanel extends JFrame {
 
         SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
 
-        JLabel label = new JLabel(sdf.format(new Date()) + " - From: " + from);
+        JLabel label = new JLabel(sdf.format(new Date()) + " - Enviado por: " + from);
         label.setFont(new Font("Tahoma", Font.PLAIN, 10));
         label.setAlignmentX(orientation == FlowLayout.LEFT ? Component.LEFT_ALIGNMENT : Component.RIGHT_ALIGNMENT);
 
