@@ -33,7 +33,6 @@ public enum CommandEnum {
         this.argumentValues = new LinkedList<>(argumentNames);
     }
 
-
     public static CommandEnum convert(String command) {
         String[] args = command.trim().split(" ");
         if (args.length < 1) return null;
