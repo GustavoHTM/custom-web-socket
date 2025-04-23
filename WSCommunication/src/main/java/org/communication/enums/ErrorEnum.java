@@ -11,7 +11,8 @@ public enum ErrorEnum {
     USER_NOT_FOUND("Usuário não encontrado.", 103),
     NAME_ALREADY_IN_USE("Nome já está em uso.", 104),
     SEND_FILE_ERROR("Erro ao enviar arquivo para %s.", 105),
-    FILE_NOT_FOUND("Arquivo não encontrado.", 106);
+    FILE_NOT_FOUND("Arquivo não encontrado.", 106),
+    SELF_MESSAGE("Não é possivel enviar mensagens para si mesmo. Precisa de ajuda?", 107);
 
     private final String descriptor;
     private final int code;

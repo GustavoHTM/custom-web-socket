@@ -119,7 +119,7 @@ public class CommandsValidator {
 
         String receiverName = arguments.removeFirst();
         if (sender.getName().equalsIgnoreCase(receiverName)) {
-            sender.receiveMessage(buildErrorMessage(ErrorEnum.USER_NOT_FOUND));
+            sender.receiveMessage(buildErrorMessage(ErrorEnum.SELF_MESSAGE));
             return;
         }
 
