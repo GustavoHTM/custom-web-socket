@@ -55,7 +55,7 @@ public class CommandsValidator {
     public static String buildAvailableCommands() {
         return "Comandos disponíveis:\n" + CommandEnum.listUserCommands()
             .stream()
-            .map(CommandEnum::toString)
+            .map(CommandEnum::getHelp)
             .collect(Collectors.joining("\n"));
     }
 

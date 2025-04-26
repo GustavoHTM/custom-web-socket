@@ -92,4 +92,9 @@ public enum CommandEnum {
         return command.trim();
     }
 
+    public String getHelp() {
+        String command = this.command + " " + String.join(" ", this.argumentNames);
+        return command.trim();
+    }
+
 }
