@@ -109,7 +109,7 @@ public class CommandsValidator {
     }
 
     private static boolean isValidNewName(String currentName, String newName) {
-        if (currentName.equalsIgnoreCase(SERVER_MESSAGE_IDENTIFIER)) {
+        if (newName.equalsIgnoreCase(SERVER_MESSAGE_IDENTIFIER)) {
             return false;
         }
 
