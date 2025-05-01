@@ -13,7 +13,7 @@ public class LogUtils {
 
     public static void logNewConnection(Client client) {
         String date = LocalDateTime.now().format(FORMATTER);
-        String message = "[" + date + "] Conexão estabelecida, client ip: " + client.getIp() + " - " + client.getName();
+        String message = "[" + date + "] Conexão estabelecida, client ip: " + client.getIp() + " - nome: " + client.getName();
 
         System.out.println(message);
 
