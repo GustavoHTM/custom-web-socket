@@ -99,6 +99,8 @@ public class CommandsValidator {
 
         client.setName(newName);
 
+        LogUtils.logNewConnection(client);
+
         String message = "Olá " + newName + "\n\n" + buildAvailableCommands();
         client.receiveMessage(SERVER_MESSAGE_IDENTIFIER, message);
     }

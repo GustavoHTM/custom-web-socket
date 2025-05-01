@@ -44,8 +44,6 @@ public class Server {
             Client client = new Client(server.accept());
             CLIENT_LIST.add(client);
 
-            LogUtils.logNewConnection(client.getIp());
-
             Executors.newSingleThreadExecutor().execute(() -> {
                 client.sendMessages(CommandsValidator::validateAndProcessCommand);
             });
